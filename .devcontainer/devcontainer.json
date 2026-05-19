@@ -2,7 +2,7 @@
   "name": "WP Private Updater",
   "dockerComposeFile": "docker-compose.yaml",
   "service": "app",
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "forwardPorts": [3000, 5432],
   "postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh",
   "customizations": {
