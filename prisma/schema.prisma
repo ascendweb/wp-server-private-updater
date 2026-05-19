@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+model Plugin {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  githubOwner String
+  githubRepo  String
+  testedWp    String?   @default("6.7")
+  requiresPhp String?  @default("8.0")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  licenses    License[]
+
+  @@unique([githubOwner, githubRepo])
+}
+
+model License {
+  id          String    @id @default(cuid())
+  key         String    @unique @default(cuid())
+  pluginId    String?
+  plugin      Plugin?   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  siteUrl     String
+  label       String?
+  status      String    @default("active")
+  lastCheckAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([key, status])
+  @@index([siteUrl])
+}
