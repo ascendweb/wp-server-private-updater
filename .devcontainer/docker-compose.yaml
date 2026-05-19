@@ -6,13 +6,16 @@ services:
       context: .
       dockerfile: Dockerfile
     command: sleep infinity
-    network_mode: service:db
+    depends_on:
+      - db
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wp_updater?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/wp_updater?schema=public
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: dev-secret-change-in-production
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: changeme
+    ports:
+      - '3000:3000'
 
   db:
     image: postgres:16-alpine
@@ -24,7 +27,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - '5432:5432'
-      - '3000:3000'
 
 volumes:
   pgdata:

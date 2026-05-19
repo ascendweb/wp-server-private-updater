@@ -8,7 +8,7 @@ echo "Generating Prisma client..."
 npx prisma generate
 
 echo "Waiting for database..."
-until pg_isready -U postgres 2>/dev/null; do
+until pg_isready -h db -U postgres 2>/dev/null; do
   sleep 1
 done
 
