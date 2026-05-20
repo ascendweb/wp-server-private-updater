@@ -20,6 +20,71 @@ const githubProvider =
       ]
     : [];
 
+type GithubOrgCheckResult =
+  | { ok: true }
+  | { ok: false; reason: string; detail?: string };
+
+async function checkGithubOrgMembership(
+  accessToken: string,
+  allowedOrg: string
+): Promise<GithubOrgCheckResult> {
+  try {
+    const membershipResponse = await fetch(
+      `https://api.github.com/user/memberships/orgs/${encodeURIComponent(allowedOrg)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "wp-private-updater-auth",
+        },
+      }
+    );
+
+    if (membershipResponse.ok) {
+      const membership = (await membershipResponse.json()) as { state?: string };
+      if (membership.state === "active") return { ok: true };
+      return {
+        ok: false,
+        reason: "org_membership_inactive",
+        detail: `Membership state is '${membership.state || "unknown"}'.`,
+      };
+    }
+
+    const orgsResponse = await fetch("https://api.github.com/user/orgs?per_page=100", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "wp-private-updater-auth",
+      },
+    });
+
+    if (!orgsResponse.ok) {
+      return {
+        ok: false,
+        reason: "org_api_error",
+        detail: `membership_status=${membershipResponse.status}, orgs_status=${orgsResponse.status}`,
+      };
+    }
+
+    const orgs = (await orgsResponse.json()) as Array<{ login?: string }>;
+    const inOrg = orgs.some(
+      (org) => org.login?.toLowerCase() === allowedOrg.toLowerCase()
+    );
+    if (inOrg) return { ok: true };
+
+    return {
+      ok: false,
+      reason: "org_not_found_for_user",
+      detail: "User org list does not include configured org.",
+    };
+  } catch {
+    return {
+      ok: false,
+      reason: "org_check_network_error",
+    };
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -51,46 +116,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ account }) {
       if (account?.provider !== "github") return true;
-      if (!githubAllowedOrg) return false;
+      if (!githubAllowedOrg) return "/login?error=org_not_configured";
 
       const accessToken = account.access_token;
-      if (!accessToken) return false;
+      if (!accessToken) return "/login?error=github_token_missing";
 
-      try {
-        const membershipResponse = await fetch(
-          `https://api.github.com/user/memberships/orgs/${encodeURIComponent(githubAllowedOrg)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/vnd.github+json",
-              "User-Agent": "wp-private-updater-auth",
-            },
-          }
-        );
-
-        if (membershipResponse.ok) {
-          const membership = (await membershipResponse.json()) as { state?: string };
-          return membership.state === "active";
-        }
-
-        // Fallback for token/API variants: list orgs and match by login.
-        const orgsResponse = await fetch("https://api.github.com/user/orgs?per_page=100", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github+json",
-            "User-Agent": "wp-private-updater-auth",
-          },
+      const orgCheck = await checkGithubOrgMembership(accessToken, githubAllowedOrg);
+      if (!orgCheck.ok) {
+        console.warn("[auth] GitHub org access denied", {
+          org: githubAllowedOrg,
+          reason: orgCheck.reason,
+          detail: orgCheck.detail,
         });
-
-        if (!orgsResponse.ok) return false;
-
-        const orgs = (await orgsResponse.json()) as Array<{ login?: string }>;
-        return orgs.some(
-          (org) => org.login?.toLowerCase() === githubAllowedOrg.toLowerCase()
-        );
-      } catch {
-        return false;
+        return `/login?error=${encodeURIComponent(orgCheck.reason)}`;
       }
+
+      return true;
     },
     async jwt({ token, user }) {
       if (user) token.id = user.id;

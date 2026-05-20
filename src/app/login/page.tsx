@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getProviders, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,10 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [githubAuthEnabled, setGithubAuthEnabled] = useState(false);
+
+  const oauthErrorCode = searchParams.get("error");
+  const oauthErrorMessage = getOauthErrorMessage(oauthErrorCode);
 
   useEffect(() => {
     let mounted = true;
@@ -67,6 +72,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {oauthErrorMessage && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {oauthErrorMessage}
+              </div>
+            )}
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
@@ -99,4 +109,25 @@ export default function LoginPage() {
       </Card>
     </div>
   );
+}
+
+function getOauthErrorMessage(errorCode: string | null): string | null {
+  switch (errorCode) {
+    case "AccessDenied":
+      return "Access denied by authentication provider.";
+    case "org_not_configured":
+      return "GitHub org restriction is not configured on the server.";
+    case "github_token_missing":
+      return "GitHub did not return an access token.";
+    case "org_membership_inactive":
+      return "Your GitHub org membership is not active.";
+    case "org_not_found_for_user":
+      return "Your GitHub account is not a member of the allowed org.";
+    case "org_api_error":
+      return "Could not verify GitHub org membership due to API response.";
+    case "org_check_network_error":
+      return "Could not verify GitHub org membership due to network error.";
+    default:
+      return null;
+  }
 }
