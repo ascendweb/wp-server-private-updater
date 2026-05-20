@@ -7,7 +7,6 @@
     3000,
     5432
   ],
-  "postCreateCommand": "bash -lc 'repo=$(ls -d /workspaces/* 2>/dev/null | head -n 1); if [ -z \"$repo\" ]; then echo \"No repo found under /workspaces\"; exit 1; fi; cd \"$repo\"; bash ./.devcontainer/postCreateCommand.sh'",
   "customizations": {
     "vscode": {
       "settings": {
