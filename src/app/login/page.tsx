@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { getProviders, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [githubAuthEnabled, setGithubAuthEnabled] = useState(false);
-
-  const oauthErrorCode = searchParams.get("error");
+  const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
   const oauthErrorMessage = getOauthErrorMessage(oauthErrorCode);
 
   useEffect(() => {
@@ -35,6 +32,11 @@ export default function LoginPage() {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setOauthErrorCode(params.get("error"));
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
