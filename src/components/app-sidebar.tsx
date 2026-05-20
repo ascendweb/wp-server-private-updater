@@ -45,7 +45,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-6 py-4">
+      <SidebarHeader className="h-16 flex-row items-center gap-0 border-b px-6 py-0">
         <Link href="/" className="flex items-center gap-2">
           <Puzzle className="h-6 w-6" />
           <span className="text-lg font-semibold">WP Updater</span>

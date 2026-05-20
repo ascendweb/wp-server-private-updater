@@ -37,7 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface Plugin {
@@ -62,6 +62,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
   const [editPlugin, setEditPlugin] = useState<Plugin | null>(null);
   const [loading, setLoading] = useState(false);
   const [latestVersions, setLatestVersions] = useState<Record<string, string>>({});
+  const [refreshingSlug, setRefreshingSlug] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +92,27 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
       cancelled = true;
     };
   }, [initialPlugins]);
+
+  async function refreshLatestVersion(slug: string) {
+    setRefreshingSlug(slug);
+    try {
+      const res = await fetch(`/api/v1/releases/${slug}?refresh=1`);
+      if (!res.ok) {
+        setLatestVersions((prev) => ({ ...prev, [slug]: "N/A" }));
+        toast.error("Failed to refresh latest version");
+        return;
+      }
+
+      const release = (await res.json()) as ReleaseInfo;
+      setLatestVersions((prev) => ({ ...prev, [slug]: release.version || "N/A" }));
+      toast.success("Latest version refreshed");
+    } catch {
+      setLatestVersions((prev) => ({ ...prev, [slug]: "N/A" }));
+      toast.error("Failed to refresh latest version");
+    } finally {
+      setRefreshingSlug(null);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -269,7 +291,23 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                     <TableCell>
                       <Badge variant="secondary">{plugin.slug}</Badge>
                     </TableCell>
-                    <TableCell>{latestVersions[plugin.slug] ?? "..."}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{latestVersions[plugin.slug] ?? "..."}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => refreshLatestVersion(plugin.slug)}
+                          disabled={refreshingSlug === plugin.slug}
+                        >
+                          <RotateCw
+                            className={`h-3.5 w-3.5 ${refreshingSlug === plugin.slug ? "animate-spin" : ""}`}
+                          />
+                        </Button>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <a
                         href={`https://github.com/${plugin.githubOwner}/${plugin.githubRepo}`}

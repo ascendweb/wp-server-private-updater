@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getLatestRelease } from "@/lib/github";
+import { releaseCache } from "@/lib/cache";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const session = await auth();
@@ -13,6 +14,9 @@ export async function GET(
   }
 
   const { slug } = await params;
+  if (req.nextUrl.searchParams.get("refresh") === "1") {
+    releaseCache.invalidate(slug);
+  }
   const plugin = await prisma.plugin.findUnique({ where: { slug } });
 
   if (!plugin) {
