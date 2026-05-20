@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { getProviders, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,24 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
-  const githubAuthEnabled = process.env.NEXT_PUBLIC_GITHUB_AUTH_ENABLED === "true";
+  const [githubAuthEnabled, setGithubAuthEnabled] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getProviders()
+      .then((providers) => {
+        if (!mounted) return;
+        setGithubAuthEnabled(Boolean(providers?.github));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setGithubAuthEnabled(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
