@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,11 +51,45 @@ interface Plugin {
   _count: { licenses: number };
 }
 
+interface ReleaseInfo {
+  version: string;
+}
+
 export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editPlugin, setEditPlugin] = useState<Plugin | null>(null);
   const [loading, setLoading] = useState(false);
+  const [latestVersions, setLatestVersions] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLatestVersions() {
+      const entries = await Promise.all(
+        initialPlugins.map(async (plugin) => {
+          try {
+            const res = await fetch(`/api/v1/releases/${plugin.slug}`);
+            if (!res.ok) return [plugin.slug, "N/A"] as const;
+            const release = (await res.json()) as ReleaseInfo;
+            return [plugin.slug, release.version || "N/A"] as const;
+          } catch {
+            return [plugin.slug, "N/A"] as const;
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setLatestVersions(Object.fromEntries(entries));
+      }
+    }
+
+    loadLatestVersions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPlugins]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -202,6 +236,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                 <TableRow>
                   <TableHead>Plugin</TableHead>
                   <TableHead>Slug</TableHead>
+                  <TableHead>Latest</TableHead>
                   <TableHead>GitHub</TableHead>
                   <TableHead>Licenses</TableHead>
                   <TableHead className="w-12" />
@@ -221,6 +256,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                     <TableCell>
                       <Badge variant="secondary">{plugin.slug}</Badge>
                     </TableCell>
+                    <TableCell>{latestVersions[plugin.slug] ?? "..."}</TableCell>
                     <TableCell>
                       <a
                         href={`https://github.com/${plugin.githubOwner}/${plugin.githubRepo}`}

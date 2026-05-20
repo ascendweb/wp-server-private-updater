@@ -38,6 +38,11 @@ function getApp(): App {
   if (!appId || !privateKey) {
     throw new Error("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY must be set");
   }
+  if (!privateKey.includes("BEGIN")) {
+    throw new Error(
+      "GITHUB_APP_PRIVATE_KEY must be the full GitHub App PEM private key, not a fingerprint."
+    );
+  }
 
   appInstance = new App({
     appId,

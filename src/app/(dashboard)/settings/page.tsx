@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Card,
   CardContent,
@@ -13,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
-  const serverUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const serverUrl = process.env.NEXTAUTH_URL || "";
+  const githubAppId = process.env.GITHUB_APP_ID || "";
+  const githubInstallationId = process.env.GITHUB_APP_INSTALLATION_ID || "";
 
   return (
     <div className="space-y-6">
@@ -60,17 +60,15 @@ export default function SettingsPage() {
                 <Label>App ID</Label>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={process.env.NEXT_PUBLIC_GITHUB_APP_ID || "Not configured"}
+                    value={githubAppId || "Not configured"}
                     readOnly
                   />
                   <Badge
                     variant={
-                      process.env.NEXT_PUBLIC_GITHUB_APP_ID
-                        ? "default"
-                        : "destructive"
+                      githubAppId ? "default" : "destructive"
                     }
                   >
-                    {process.env.NEXT_PUBLIC_GITHUB_APP_ID ? "Set" : "Missing"}
+                    {githubAppId ? "Set" : "Missing"}
                   </Badge>
                 </div>
               </div>
@@ -78,22 +76,15 @@ export default function SettingsPage() {
                 <Label>Installation ID</Label>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={
-                      process.env.NEXT_PUBLIC_GITHUB_APP_INSTALLATION_ID ||
-                      "Not configured"
-                    }
+                    value={githubInstallationId || "Not configured"}
                     readOnly
                   />
                   <Badge
                     variant={
-                      process.env.NEXT_PUBLIC_GITHUB_APP_INSTALLATION_ID
-                        ? "default"
-                        : "destructive"
+                      githubInstallationId ? "default" : "destructive"
                     }
                   >
-                    {process.env.NEXT_PUBLIC_GITHUB_APP_INSTALLATION_ID
-                      ? "Set"
-                      : "Missing"}
+                    {githubInstallationId ? "Set" : "Missing"}
                   </Badge>
                 </div>
               </div>
