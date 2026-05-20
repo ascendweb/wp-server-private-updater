@@ -12,7 +12,7 @@ ENV DATABASE_URL=$DATABASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN test -n "$DATABASE_URL" || (echo 'DATABASE_URL build arg is required for prisma generate' && exit 1)
-RUN ./node_modules/.bin/prisma generate
+RUN npx prisma generate
 RUN npm run build
 
 FROM base AS runner
@@ -38,4 +38,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "test -n \"$DATABASE_URL\" || (echo 'DATABASE_URL is required' && exit 1); if [ -d prisma/migrations ] && [ \"$(ls -A prisma/migrations 2>/dev/null)\" ]; then ./node_modules/.bin/prisma migrate deploy; else ./node_modules/.bin/prisma db push; fi && node server.js"]
+CMD ["sh", "-c", "test -n \"$DATABASE_URL\" || (echo 'DATABASE_URL is required' && exit 1); if [ -d prisma/migrations ] && [ \"$(ls -A prisma/migrations 2>/dev/null)\" ]; then npx prisma migrate deploy; else npx prisma db push; fi && node server.js"]
