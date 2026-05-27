@@ -1,8 +1,11 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
+import Google from "next-auth/providers/google";
 import { compareSync } from "bcryptjs";
 import { prisma } from "./db";
+
+/* ── GitHub OAuth ─────────────────────────────────────────────── */
 
 const githubClientId = process.env.GITHUB_AUTH_CLIENT_ID;
 const githubClientSecret = process.env.GITHUB_AUTH_CLIENT_SECRET;
@@ -85,6 +88,52 @@ async function checkGithubOrgMembership(
   }
 }
 
+/* ── Google OAuth ─────────────────────────────────────────────── */
+
+const googleClientId = process.env.GOOGLE_AUTH_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_AUTH_CLIENT_SECRET;
+const googleAllowedDomain = process.env.GOOGLE_AUTH_ALLOWED_DOMAIN?.trim().toLowerCase();
+const googleProvider =
+  googleClientId && googleClientSecret
+    ? [
+        Google({
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
+          authorization: {
+            params: {
+              ...(googleAllowedDomain ? { hd: googleAllowedDomain } : {}),
+            },
+          },
+        }),
+      ]
+    : [];
+
+async function upsertOAuthUser(
+  provider: string,
+  providerAccountId: string,
+  email: string,
+  name: string | null
+) {
+  let user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: { email, name, accounts: { create: { provider, providerAccountId } } },
+    });
+  } else {
+    const existing = await prisma.account.findUnique({
+      where: { provider_providerAccountId: { provider, providerAccountId } },
+    });
+    if (!existing) {
+      await prisma.account.create({
+        data: { userId: user.id, provider, providerAccountId },
+      });
+    }
+  }
+
+  return user;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -99,7 +148,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!email || !password) return null;
 
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) return null;
+        if (!user?.password) return null;
+        if (user.status === "disabled") return null;
 
         const valid = compareSync(password, user.password);
         if (!valid) return null;
@@ -108,27 +158,66 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
     ...githubProvider,
+    ...googleProvider,
   ],
   pages: {
     signIn: "/login",
   },
   session: { strategy: "jwt" },
   callbacks: {
-    async signIn({ account }) {
-      if (account?.provider !== "github") return true;
-      if (!githubAllowedOrg) return "/login?error=org_not_configured";
+    async signIn({ user: authUser, account, profile }) {
+      if (account?.provider === "github") {
+        if (!githubAllowedOrg) return "/login?error=org_not_configured";
 
-      const accessToken = account.access_token;
-      if (!accessToken) return "/login?error=github_token_missing";
+        const accessToken = account.access_token;
+        if (!accessToken) return "/login?error=github_token_missing";
 
-      const orgCheck = await checkGithubOrgMembership(accessToken, githubAllowedOrg);
-      if (!orgCheck.ok) {
-        console.warn("[auth] GitHub org access denied", {
-          org: githubAllowedOrg,
-          reason: orgCheck.reason,
-          detail: orgCheck.detail,
-        });
-        return `/login?error=${encodeURIComponent(orgCheck.reason)}`;
+        const orgCheck = await checkGithubOrgMembership(accessToken, githubAllowedOrg);
+        if (!orgCheck.ok) {
+          console.warn("[auth] GitHub org access denied", {
+            org: githubAllowedOrg,
+            reason: orgCheck.reason,
+            detail: orgCheck.detail,
+          });
+          return `/login?error=${encodeURIComponent(orgCheck.reason)}`;
+        }
+
+        const email = authUser.email ?? (profile?.email as string | undefined);
+        if (!email) return "/login?error=github_token_missing";
+
+        const dbUser = await upsertOAuthUser(
+          "github",
+          account.providerAccountId,
+          email,
+          authUser.name ?? null
+        );
+        if (dbUser.status === "disabled") return "/login?error=account_disabled";
+        authUser.id = dbUser.id;
+      }
+
+      if (account?.provider === "google") {
+        if (googleAllowedDomain) {
+          const hd = (profile as Record<string, unknown> | undefined)?.hd as string | undefined;
+          if (hd?.toLowerCase() !== googleAllowedDomain) {
+            console.warn("[auth] Google domain access denied", {
+              allowedDomain: googleAllowedDomain,
+              hd: hd ?? "none",
+            });
+            return "/login?error=google_hd_mismatch";
+          }
+        }
+
+        const email = authUser.email ?? (profile?.email as string | undefined);
+        if (!email) return "/login?error=google_email_missing";
+
+        const dbUser = await upsertOAuthUser(
+          "google",
+          account.providerAccountId,
+          email,
+          authUser.name ?? null
+        );
+        if (dbUser.status === "disabled") return "/login?error=account_disabled";
+        authUser.id = dbUser.id;
       }
 
       return true;
