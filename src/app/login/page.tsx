@@ -8,12 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+type OAuthProviderInfo = { id: string; name: string };
+
+const OAUTH_PROVIDERS: Record<string, { label: string }> = {
+  github: { label: "GitHub" },
+  google: { label: "Google" },
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [githubLoading, setGithubLoading] = useState(false);
-  const [githubAuthEnabled, setGithubAuthEnabled] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [enabledOAuthProviders, setEnabledOAuthProviders] = useState<OAuthProviderInfo[]>([]);
   const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
   const oauthErrorMessage = getOauthErrorMessage(oauthErrorCode);
 
@@ -21,12 +28,15 @@ export default function LoginPage() {
     let mounted = true;
     getProviders()
       .then((providers) => {
-        if (!mounted) return;
-        setGithubAuthEnabled(Boolean(providers?.github));
+        if (!mounted || !providers) return;
+        const oauth = Object.values(providers)
+          .filter((p) => p.id !== "credentials" && p.id in OAUTH_PROVIDERS)
+          .map((p) => ({ id: p.id, name: OAUTH_PROVIDERS[p.id]?.label ?? p.name }));
+        setEnabledOAuthProviders(oauth);
       })
       .catch(() => {
         if (!mounted) return;
-        setGithubAuthEnabled(false);
+        setEnabledOAuthProviders([]);
       });
 
     return () => {
@@ -60,9 +70,9 @@ export default function LoginPage() {
     }
   }
 
-  async function handleGitHubSignIn() {
-    setGithubLoading(true);
-    await signIn("github", { callbackUrl: "/" });
+  async function handleOAuthSignIn(providerId: string) {
+    setOauthLoading(providerId);
+    await signIn(providerId, { callbackUrl: "/" });
   }
 
   return (
@@ -95,17 +105,20 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
-            {githubAuthEnabled && (
+            {enabledOAuthProviders.map((provider) => (
               <Button
+                key={provider.id}
                 type="button"
                 variant="outline"
                 className="w-full"
-                disabled={githubLoading}
-                onClick={handleGitHubSignIn}
+                disabled={oauthLoading === provider.id}
+                onClick={() => handleOAuthSignIn(provider.id)}
               >
-                {githubLoading ? "Redirecting..." : "Continue with GitHub"}
+                {oauthLoading === provider.id
+                  ? "Redirecting..."
+                  : `Continue with ${provider.name}`}
               </Button>
-            )}
+            ))}
           </form>
         </CardContent>
       </Card>
@@ -129,6 +142,12 @@ function getOauthErrorMessage(errorCode: string | null): string | null {
       return "Could not verify GitHub org membership due to API response.";
     case "org_check_network_error":
       return "Could not verify GitHub org membership due to network error.";
+    case "google_hd_mismatch":
+      return "Your Google account is not part of the allowed organization.";
+    case "google_email_missing":
+      return "Google did not return an email address.";
+    case "account_disabled":
+      return "Your account has been disabled. Contact an administrator.";
     default:
       return null;
   }

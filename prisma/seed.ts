@@ -14,21 +14,45 @@ async function main() {
   const email = process.env.ADMIN_EMAIL || "admin@example.com";
   const password = process.env.ADMIN_PASSWORD || "changeme";
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    include: { accounts: true },
+  });
+
   if (existing) {
-    console.log(`Admin user ${email} already exists, skipping seed.`);
+    const hasCredentialsAccount = existing.accounts.some(
+      (a) => a.provider === "credentials"
+    );
+    if (!hasCredentialsAccount) {
+      await prisma.account.create({
+        data: {
+          userId: existing.id,
+          provider: "credentials",
+          providerAccountId: email,
+        },
+      });
+      console.log(`Linked credentials account for existing user ${email}.`);
+    } else {
+      console.log(`Admin user ${email} already exists, skipping seed.`);
+    }
     return;
   }
 
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email,
       password: hashSync(password, 12),
       name: "Admin",
+      accounts: {
+        create: {
+          provider: "credentials",
+          providerAccountId: email,
+        },
+      },
     },
   });
 
-  console.log(`Created admin user: ${email}`);
+  console.log(`Created admin user: ${user.email}`);
 }
 
 main()

@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WP Private Updater
+
+A self-hosted server for distributing private WordPress plugin updates. Manages plugins sourced from private GitHub repositories, issues license keys to authorize WordPress sites, and serves update metadata and ZIP downloads to the WordPress update system.
+
+Built with Next.js 16, Prisma, PostgreSQL, and NextAuth v5.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env    # configure database, auth, and GitHub App credentials
+npm install
+npm run db:migrate      # run Prisma migrations
+npm run db:seed         # create the initial admin user
+npm run dev             # start dev server at http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Routes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+All admin routes require an authenticated session and return `401 Unauthorized` without one. Public routes use license-key validation instead.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Authentication
 
-## Learn More
+| Method   | Path          | Auth | Description                                                     |
+| -------- | ------------- | ---- | --------------------------------------------------------------- |
+| GET/POST | `/api/auth/*` | --   | NextAuth handlers (sign-in, sign-out, OAuth callbacks, session) |
 
-To learn more about Next.js, take a look at the following resources:
+### Plugins (admin)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Method | Path                  | Description                                                   |
+| ------ | --------------------- | ------------------------------------------------------------- |
+| GET    | `/api/v1/plugins`     | List all plugins with license counts                          |
+| POST   | `/api/v1/plugins`     | Create a new plugin from slug, name, and GitHub repo          |
+| GET    | `/api/v1/plugins/:id` | Get a single plugin with its licenses                         |
+| PATCH  | `/api/v1/plugins/:id` | Update plugin fields (name, description, repo, asset pattern) |
+| DELETE | `/api/v1/plugins/:id` | Delete a plugin and invalidate its release cache              |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Licenses (admin)
 
-## Deploy on Vercel
+| Method | Path                   | Description                                             |
+| ------ | ---------------------- | ------------------------------------------------------- |
+| GET    | `/api/v1/licenses`     | List all licenses with associated plugin info           |
+| POST   | `/api/v1/licenses`     | Create a new license for a site URL and optional plugin |
+| PATCH  | `/api/v1/licenses/:id` | Update a license (e.g. revoke or reactivate)            |
+| DELETE | `/api/v1/licenses/:id` | Delete a license                                        |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Users (admin)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Method | Path                | Description                                         |
+| ------ | ------------------- | --------------------------------------------------- |
+| GET    | `/api/v1/users`     | List all users with linked auth accounts            |
+| POST   | `/api/v1/users`     | Create a new email/password user                    |
+| GET    | `/api/v1/users/:id` | Get a single user                                   |
+| PATCH  | `/api/v1/users/:id` | Update name, email, role, status, or reset password |
+| DELETE | `/api/v1/users/:id` | Delete a user (cannot delete yourself)              |
+
+### Releases (admin)
+
+| Method | Path                     | Description                              |
+| ------ | ------------------------ | ---------------------------------------- |
+| GET    | `/api/v1/releases/:slug` | Fetch latest GitHub release for a plugin |
+
+### Stats (admin)
+
+| Method | Path            | Description                                                                          |
+| ------ | --------------- | ------------------------------------------------------------------------------------ |
+| GET    | `/api/v1/stats` | Dashboard counts: plugins, licenses, active licenses, recent check-ins, unique sites |
+
+### Site Connection (mixed)
+
+| Method | Path                       | Auth   | Description                                                               |
+| ------ | -------------------------- | ------ | ------------------------------------------------------------------------- |
+| POST   | `/api/v1/connect/initiate` | Public | Creates a short-lived JWT and returns an admin approval URL               |
+| POST   | `/api/v1/connect/complete` | Admin  | Verifies the connect JWT, creates a license, and returns a callback token |
+
+### WordPress Client (public, license-key auth)
+
+| Method | Path                              | Description                                                     |
+| ------ | --------------------------------- | --------------------------------------------------------------- |
+| GET    | `/api/v1/update-check`            | Check for a newer plugin version and return update metadata     |
+| GET    | `/api/v1/download/:slug/:version` | Stream the plugin release ZIP from GitHub                       |
+| GET    | `/api/v1/license/validate`        | Check whether a license key is valid for a given site           |
+| GET    | `/api/v1/plugins/available`       | List installable plugins for a licensed site with download URLs |
+
+## Environment Variables
+
+See [`.env.example`](.env.example) for all available configuration. Key groups:
+
+- **Database** -- `DATABASE_URL`
+- **NextAuth** -- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
+- **GitHub OAuth** (optional) -- `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`
+- **Google OAuth** (optional) -- `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`, `GOOGLE_AUTH_ALLOWED_DOMAIN`
+- **GitHub App** (for fetching private releases) -- `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`
+- **Admin seed** -- `ADMIN_EMAIL`, `ADMIN_PASSWORD`
