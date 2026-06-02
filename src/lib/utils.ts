@@ -21,3 +21,18 @@ export function getServerOrigin(req: NextRequest): string {
   }
   return req.nextUrl.origin;
 }
+
+/**
+ * Get server origin in contexts without a request object (server actions/jobs).
+ */
+export function getServerOriginFromEnv(fallback = "http://localhost:3000"): string {
+  const envUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL;
+  if (envUrl) {
+    try {
+      return new URL(envUrl).origin;
+    } catch {
+      // fall through
+    }
+  }
+  return fallback;
+}

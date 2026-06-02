@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatch } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
+import { getServerOriginFromEnv } from "@/lib/utils";
 
 async function requireAuth() {
   const session = await auth();
@@ -28,7 +29,7 @@ export async function forceUpdateSite(
   if (license) {
     const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
     if (release) {
-      const serverUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+      const serverUrl = getServerOriginFromEnv();
       packageUrl = `${serverUrl}/api/v1/download/${pluginSlug}/${release.version}?license_key=${encodeURIComponent(license.key)}&site_url=${encodeURIComponent(site.url)}`;
     }
   }
@@ -60,7 +61,7 @@ export async function forceUpdateAll(pluginSlug: string) {
   if (!plugin) throw new Error("Plugin not found");
 
   const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
-  const serverUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const serverUrl = getServerOriginFromEnv();
 
   let dispatched = 0;
   for (const sp of sitePlugins) {

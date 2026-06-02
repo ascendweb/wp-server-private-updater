@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatch } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
+import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
 
 async function requireAuth() {
@@ -34,7 +35,7 @@ export async function sendCommand(
 
   let packageUrl: string | null = null;
   if (plugin) {
-    const serverUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const serverUrl = getServerOriginFromEnv();
     const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
     const license = await prisma.license.findFirst({
       where: { siteId: site.id, status: "active" },
