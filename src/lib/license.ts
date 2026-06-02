@@ -23,10 +23,15 @@ export async function validateLicense(
     return null;
   }
 
-  await prisma.license.update({
-    where: { id: license.id },
-    data: { lastCheckAt: new Date() },
-  });
+  const shouldUpdateCheckin =
+    !license.lastCheckAt || Date.now() - license.lastCheckAt.getTime() > 15 * 60 * 1000;
+
+  if (shouldUpdateCheckin) {
+    await prisma.license.update({
+      where: { id: license.id },
+      data: { lastCheckAt: new Date() },
+    });
+  }
 
   return license;
 }
@@ -50,8 +55,11 @@ export async function ensureSite(siteUrl: string, licenseId?: string): Promise<S
   });
 
   if (licenseId) {
-    await prisma.license.update({
-      where: { id: licenseId },
+    await prisma.license.updateMany({
+      where: {
+        id: licenseId,
+        OR: [{ siteId: null }, { siteId: { not: site.id } }],
+      },
       data: { siteId: site.id },
     });
   }
