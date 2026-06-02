@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLatestRelease } from "@/lib/github";
 import { validateLicense } from "@/lib/license";
+import { getServerOrigin } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     orderBy: { name: "asc" },
   });
 
-  const serverUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+  const serverUrl = getServerOrigin(req);
   const hasGithubAppConfig = Boolean(
     process.env.GITHUB_APP_ID &&
       process.env.GITHUB_APP_PRIVATE_KEY &&

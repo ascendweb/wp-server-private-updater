@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite, ensureSiteToken } from "@/lib/license";
 import { getLatestRelease } from "@/lib/github";
 import { prisma } from "@/lib/db";
+import { getServerOrigin } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ update: false, version: release.version, site_token: siteToken });
   }
 
-  const serverUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+  const serverUrl = getServerOrigin(req);
 
   return NextResponse.json({
     slug: plugin.slug,

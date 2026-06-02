@@ -190,7 +190,12 @@ export function SiteDetailClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sitePlugins.map((sp) => (
+                {[...sitePlugins]
+                  .sort((a, b) => {
+                    if (a.isManaged !== b.isManaged) return a.isManaged ? -1 : 1;
+                    return a.pluginName.localeCompare(b.pluginName);
+                  })
+                  .map((sp) => (
                   <TableRow key={sp.id}>
                     <TableCell>
                       <div className="font-medium">{sp.pluginName}</div>
@@ -206,20 +211,24 @@ export function SiteDetailClient({
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleToggleLock(sp.id)}
-                        disabled={busy === sp.id}
-                        title={sp.isLocked ? "Unlock version" : "Lock at current version"}
-                      >
-                        {sp.isLocked ? (
-                          <Lock className="h-4 w-4 text-orange-500" />
-                        ) : (
-                          <Unlock className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
+                      {sp.isManaged ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleToggleLock(sp.id)}
+                          disabled={busy === sp.id}
+                          title={sp.isLocked ? "Unlock version" : "Lock at current version"}
+                        >
+                          {sp.isLocked ? (
+                            <Lock className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <Unlock className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(sp.lastReportedAt).toLocaleString()}
