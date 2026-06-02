@@ -8,28 +8,35 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [pluginCount, licenseCount, activeLicenseCount, recentCheckins] =
-    await Promise.all([
-      prisma.plugin.count(),
-      prisma.license.count(),
-      prisma.license.count({ where: { status: "active" } }),
-      prisma.license.count({
-        where: {
-          lastCheckAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      }),
-    ]);
-
-  const uniqueSites = await prisma.license.groupBy({
-    by: ["siteUrl"],
-    where: { status: "active" },
-  });
+  const [
+    pluginCount,
+    licenseCount,
+    activeLicenseCount,
+    recentCheckins,
+    siteCount,
+    sitesWithToken,
+    pendingCommands,
+  ] = await Promise.all([
+    prisma.plugin.count(),
+    prisma.license.count(),
+    prisma.license.count({ where: { status: "active" } }),
+    prisma.license.count({
+      where: {
+        lastCheckAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    }),
+    prisma.site.count(),
+    prisma.site.count({ where: { siteToken: { not: null } } }),
+    prisma.command.count({ where: { status: "pending" } }),
+  ]);
 
   return NextResponse.json({
     plugins: pluginCount,
     totalLicenses: licenseCount,
     activeLicenses: activeLicenseCount,
     recentCheckins,
-    uniqueSites: uniqueSites.length,
+    sites: siteCount,
+    sitesWithToken,
+    pendingCommands,
   });
 }

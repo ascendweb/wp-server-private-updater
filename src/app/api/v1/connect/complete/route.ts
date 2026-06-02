@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { jwtVerify } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 import { prisma } from "@/lib/db";
 import { normalizeSiteUrl } from "@/lib/license";
 
@@ -32,6 +32,22 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedUrl = normalizeSiteUrl(payload.site_url);
+  const pushUrl = normalizedUrl + "/wp-json/wppu/v1";
+  const siteToken = crypto.randomUUID();
+
+  const site = await prisma.site.upsert({
+    where: { url: normalizedUrl },
+    create: {
+      url: normalizedUrl,
+      label: normalizedUrl,
+      pushUrl,
+      siteToken,
+    },
+    update: {
+      pushUrl,
+      siteToken,
+    },
+  });
 
   let pluginId: string | null = null;
   if (payload.plugin_slug) {
@@ -44,15 +60,17 @@ export async function POST(req: NextRequest) {
   const license = await prisma.license.create({
     data: {
       siteUrl: normalizedUrl,
+      siteId: site.id,
       pluginId,
       label: `Auto-connected: ${normalizedUrl}`,
       status: "active",
     },
   });
 
-  const callbackToken = await new (await import("jose")).SignJWT({
+  const callbackToken = await new SignJWT({
     license_key: license.key,
     site_url: normalizedUrl,
+    site_token: siteToken,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("5m")

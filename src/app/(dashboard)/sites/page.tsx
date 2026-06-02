@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import {
   Card,
@@ -17,39 +18,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default async function SitesPage() {
-  const licenses = await prisma.license.findMany({
-    where: { status: "active" },
-    include: { plugin: { select: { name: true, slug: true } } },
-    orderBy: { lastCheckAt: { sort: "desc", nulls: "last" } },
+  const sites = await prisma.site.findMany({
+    include: {
+      _count: { select: { licenses: true, plugins: true, commands: true } },
+      plugins: {
+        where: { pluginId: { not: null } },
+        include: { plugin: { select: { name: true } } },
+        orderBy: { pluginName: "asc" },
+      },
+      licenses: {
+        where: { status: "active" },
+        orderBy: { lastCheckAt: { sort: "desc", nulls: "last" } },
+        take: 1,
+        select: { lastCheckAt: true },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
   });
-
-  const siteMap = new Map<
-    string,
-    { plugins: string[]; lastCheckAt: Date | null; licenseCount: number }
-  >();
-
-  for (const lic of licenses) {
-    const existing = siteMap.get(lic.siteUrl);
-    const pluginName = lic.plugin?.name || "All plugins";
-    if (existing) {
-      existing.plugins.push(pluginName);
-      existing.licenseCount++;
-      if (lic.lastCheckAt && (!existing.lastCheckAt || lic.lastCheckAt > existing.lastCheckAt)) {
-        existing.lastCheckAt = lic.lastCheckAt;
-      }
-    } else {
-      siteMap.set(lic.siteUrl, {
-        plugins: [pluginName],
-        lastCheckAt: lic.lastCheckAt,
-        licenseCount: 1,
-      });
-    }
-  }
-
-  const sites = Array.from(siteMap.entries()).map(([url, data]) => ({
-    url,
-    ...data,
-  }));
 
   return (
     <div className="space-y-6">
@@ -58,7 +43,7 @@ export default async function SitesPage() {
         <CardHeader>
           <CardTitle>Sites</CardTitle>
           <CardDescription>
-            WordPress sites with active license keys, grouped by domain.
+            WordPress sites connected to the update server. Click a site to manage its plugins.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -73,39 +58,58 @@ export default async function SitesPage() {
                   <TableHead>Site URL</TableHead>
                   <TableHead>Plugins</TableHead>
                   <TableHead>Licenses</TableHead>
+                  <TableHead>Token</TableHead>
                   <TableHead>Last Check-in</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sites.map((site) => (
-                  <TableRow key={site.url}>
-                    <TableCell>
-                      <a
-                        href={site.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium hover:underline"
-                      >
-                        {site.url}
-                      </a>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {[...new Set(site.plugins)].map((p) => (
-                          <Badge key={p} variant="outline">
-                            {p}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>{site.licenseCount}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {site.lastCheckAt
-                        ? new Date(site.lastCheckAt).toLocaleString()
-                        : "Never"}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sites.map((site) => {
+                  const lastCheck = site.licenses[0]?.lastCheckAt;
+                  const pluginNames = site.plugins
+                    .map((sp) => sp.plugin?.name || sp.pluginName || sp.pluginSlug)
+                    .filter(Boolean);
+
+                  return (
+                    <TableRow key={site.id}>
+                      <TableCell>
+                        <Link
+                          href={`/sites/${site.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {site.url}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {pluginNames.length > 0 ? (
+                            pluginNames.map((name) => (
+                              <Badge key={name} variant="outline">
+                                {name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              {site._count.plugins > 0
+                                ? `${site._count.plugins} plugins`
+                                : "Awaiting heartbeat"}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{site._count.licenses}</TableCell>
+                      <TableCell>
+                        <Badge variant={site.siteToken ? "default" : "secondary"}>
+                          {site.siteToken ? "Active" : "Pending"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {lastCheck
+                          ? new Date(lastCheck).toLocaleString()
+                          : "Never"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

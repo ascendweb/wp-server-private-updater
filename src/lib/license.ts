@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import type { Site } from "@prisma/client";
 
 export async function validateLicense(
   licenseKey: string,
@@ -13,7 +14,7 @@ export async function validateLicense(
       status: "active",
       siteUrl: normalizedUrl,
     },
-    include: { plugin: true },
+    include: { plugin: true, site: true },
   });
 
   if (!license) return null;
@@ -28,6 +29,49 @@ export async function validateLicense(
   });
 
   return license;
+}
+
+/**
+ * Find or create a Site record for the given URL, and ensure the license
+ * is linked to it. Returns the Site.
+ */
+export async function ensureSite(siteUrl: string, licenseId?: string): Promise<Site> {
+  const normalizedUrl = normalizeSiteUrl(siteUrl);
+  const pushUrl = normalizedUrl + "/wp-json/wppu/v1";
+
+  const site = await prisma.site.upsert({
+    where: { url: normalizedUrl },
+    create: {
+      url: normalizedUrl,
+      label: normalizedUrl,
+      pushUrl,
+    },
+    update: {},
+  });
+
+  if (licenseId) {
+    await prisma.license.update({
+      where: { id: licenseId },
+      data: { siteId: site.id },
+    });
+  }
+
+  return site;
+}
+
+/**
+ * Ensure the site has a siteToken. Generates one if missing, returns it.
+ */
+export async function ensureSiteToken(siteId: string): Promise<string> {
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
+  if (site.siteToken) return site.siteToken;
+
+  const token = crypto.randomUUID();
+  await prisma.site.update({
+    where: { id: siteId },
+    data: { siteToken: token },
+  });
+  return token;
 }
 
 export function normalizeSiteUrl(url: string): string {

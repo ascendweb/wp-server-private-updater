@@ -37,8 +37,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch, RotateCw } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch, RotateCw, Globe } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface Plugin {
   id: string;
@@ -49,7 +50,7 @@ interface Plugin {
   githubRepo: string;
   releaseAssetPattern: string;
   createdAt: Date;
-  _count: { licenses: number };
+  _count: { licenses: number; sitePlugins: number };
 }
 
 interface ReleaseInfo {
@@ -273,6 +274,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                   <TableHead>Slug</TableHead>
                   <TableHead>Latest</TableHead>
                   <TableHead>GitHub</TableHead>
+                  <TableHead>Sites</TableHead>
                   <TableHead>Licenses</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -318,6 +320,15 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                         <GitBranch className="h-3.5 w-3.5" />
                         {plugin.githubOwner}/{plugin.githubRepo}
                       </a>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/plugins/${plugin.id}/sites`}
+                        className="flex items-center gap-1 text-sm hover:underline"
+                      >
+                        <Globe className="h-3.5 w-3.5" />
+                        {plugin._count.sitePlugins}
+                      </Link>
                     </TableCell>
                     <TableCell>{plugin._count.licenses}</TableCell>
                     <TableCell>

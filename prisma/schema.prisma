@@ -15,20 +15,34 @@ model User {
 }
 
 model Plugin {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  name        String
-  description String?
-  githubOwner String
-  githubRepo  String
-  releaseAssetPattern String @default("{slug}-v{version}.zip")
-  testedWp    String?   @default("6.7")
-  requiresPhp String?  @default("8.0")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  licenses    License[]
+  id                  String       @id @default(cuid())
+  slug                String       @unique
+  name                String
+  description         String?
+  githubOwner         String
+  githubRepo          String
+  releaseAssetPattern String       @default("{slug}-v{version}.zip")
+  testedWp            String?      @default("6.7")
+  requiresPhp         String?      @default("8.0")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  licenses            License[]
+  sitePlugins         SitePlugin[]
 
   @@unique([githubOwner, githubRepo])
+}
+
+model Site {
+  id        String       @id @default(cuid())
+  url       String       @unique
+  label     String?
+  siteToken String?
+  pushUrl   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  licenses  License[]
+  plugins   SitePlugin[]
+  commands  Command[]
 }
 
 model License {
@@ -36,6 +50,8 @@ model License {
   key         String    @unique @default(cuid())
   pluginId    String?
   plugin      Plugin?   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  siteId      String?
+  site        Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
   siteUrl     String
   label       String?
   status      String    @default("active")
@@ -44,4 +60,56 @@ model License {
 
   @@index([key, status])
   @@index([siteUrl])
+  @@index([siteId])
+}
+
+model SitePlugin {
+  id               String    @id @default(cuid())
+  siteId           String
+  site             Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  pluginSlug       String
+  pluginId         String?
+  plugin           Plugin?   @relation(fields: [pluginId], references: [id], onDelete: SetNull)
+  pluginBasename   String?
+  pluginName       String?
+  installedVersion String?
+  isActive         Boolean   @default(false)
+  isLocked         Boolean   @default(false)
+  lastReportedAt   DateTime  @default(now())
+
+  @@unique([siteId, pluginSlug])
+  @@index([pluginSlug])
+  @@index([pluginId])
+}
+
+enum CommandType {
+  update
+  install
+  rollback
+}
+
+enum CommandStatus {
+  pending
+  delivered
+  in_progress
+  completed
+  failed
+}
+
+model Command {
+  id            String        @id @default(cuid())
+  siteId        String
+  site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  type          CommandType
+  pluginSlug    String
+  targetVersion String?
+  packageUrl    String?
+  status        CommandStatus @default(pending)
+  result        String?
+  createdAt     DateTime      @default(now())
+  deliveredAt   DateTime?
+  completedAt   DateTime?
+
+  @@index([siteId, status])
+  @@index([status])
 }
