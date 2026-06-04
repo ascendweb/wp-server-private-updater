@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getServerOriginFromEnv } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const serverUrl = process.env.NEXTAUTH_URL || "";
+  const serverUrl = getServerOriginFromEnv("");
   const githubAppId = process.env.GITHUB_APP_ID || "";
   const githubInstallationId = process.env.GITHUB_APP_INSTALLATION_ID || "";
 
@@ -39,7 +40,7 @@ export default function SettingsPage() {
                 <Label>Server URL</Label>
                 <Input value={serverUrl} readOnly />
                 <p className="text-xs text-muted-foreground">
-                  Set via NEXTAUTH_URL environment variable.
+                  Set via SERVER_URL environment variable.
                 </p>
               </div>
             </CardContent>

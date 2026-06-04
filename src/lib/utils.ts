@@ -7,32 +7,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Get the public-facing server origin for building download URLs.
- * Strips any path (like /api/auth) that may have been appended to NEXTAUTH_URL.
+ * Public-facing server origin for building URLs (download links, approval URLs, etc.).
+ * Uses SERVER_URL env var; falls back to the request origin.
  */
 export function getServerOrigin(req: NextRequest): string {
-  const envUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL;
-  if (envUrl) {
-    try {
-      return new URL(envUrl).origin;
-    } catch {
-      // fall through
-    }
-  }
-  return req.nextUrl.origin;
+  return process.env.SERVER_URL?.replace(/\/+$/, "") || req.nextUrl.origin;
 }
 
 /**
- * Get server origin in contexts without a request object (server actions/jobs).
+ * Server origin in contexts without a request object (server actions/jobs).
  */
 export function getServerOriginFromEnv(fallback = "http://localhost:3000"): string {
-  const envUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL;
-  if (envUrl) {
-    try {
-      return new URL(envUrl).origin;
-    } catch {
-      // fall through
-    }
-  }
-  return fallback;
+  return process.env.SERVER_URL?.replace(/\/+$/, "") || fallback;
 }

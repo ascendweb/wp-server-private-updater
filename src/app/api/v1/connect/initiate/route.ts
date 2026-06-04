@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
+import { getServerOrigin } from "@/lib/utils";
 
 const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || "secret");
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     .setIssuedAt()
     .sign(secret);
 
-  const serverUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+  const serverUrl = getServerOrigin(req);
   const approvalUrl = `${serverUrl}/connect/approve?token=${token}`;
 
   return NextResponse.json({ approval_url: approvalUrl });
