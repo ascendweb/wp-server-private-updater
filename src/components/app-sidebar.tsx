@@ -46,7 +46,7 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar>
+    <Sidebar variant="inset">
       <SidebarHeader className="h-16 flex-row items-center gap-0 border-b px-6 py-0">
         <Link href="/" className="flex items-center gap-2">
           <Puzzle className="h-6 w-6" />

@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -46,6 +45,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePageHeader } from "@/components/page-header";
 
 interface AccountInfo {
   id: string;
@@ -69,6 +69,13 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  usePageHeader(
+    "Users",
+    <Button onClick={() => setCreateOpen(true)}>
+      <Plus className="mr-2 h-4 w-4" /> Create User
+    </Button>
+  );
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -167,13 +174,8 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Users</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" /> Create User
-          </DialogTrigger>
-          <DialogContent>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
             <DialogHeader>
               <DialogTitle>Create User</DialogTitle>
               <DialogDescription>
@@ -212,8 +214,7 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       <Card>
         <CardHeader>

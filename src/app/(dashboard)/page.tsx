@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { SetPageHeader } from "@/components/set-page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -48,7 +49,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <SetPageHeader title="Dashboard" />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.slice(0, 5).map((stat) => (
           <Card key={stat.title}>

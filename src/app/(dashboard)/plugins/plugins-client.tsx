@@ -20,7 +20,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -39,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { usePageHeader } from "@/components/page-header";
 
 interface Plugin {
   id: string;
@@ -63,6 +63,13 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
   const [loading, setLoading] = useState(false);
   const [latestVersions, setLatestVersions] = useState<Record<string, string>>({});
   const [refreshingSlug, setRefreshingSlug] = useState<string | null>(null);
+
+  usePageHeader(
+    "Plugins",
+    <Button onClick={() => setOpen(true)}>
+      <Plus className="mr-2 h-4 w-4" /> Add Plugin
+    </Button>
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -163,19 +170,14 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Plugins</h1>
-        <Dialog
-          open={open}
-          onOpenChange={(v) => {
-            setOpen(v);
-            if (!v) setEditPlugin(null);
-          }}
-        >
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" /> Add Plugin
-          </DialogTrigger>
-          <DialogContent>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setEditPlugin(null);
+        }}
+      >
+        <DialogContent>
             <DialogHeader>
               <DialogTitle>
                 {editPlugin ? "Edit Plugin" : "Add Plugin"}
@@ -250,8 +252,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       <Card>
         <CardHeader>

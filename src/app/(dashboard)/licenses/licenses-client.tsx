@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -45,6 +44,7 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePageHeader } from "@/components/page-header";
 
 interface License {
   id: string;
@@ -64,6 +64,13 @@ export function LicensesClient({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  usePageHeader(
+    "Licenses",
+    <Button onClick={() => setOpen(true)}>
+      <Plus className="mr-2 h-4 w-4" /> Create License
+    </Button>
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -132,13 +139,8 @@ export function LicensesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Licenses</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="mr-2 h-4 w-4" /> Create License
-          </DialogTrigger>
-          <DialogContent>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
             <DialogHeader>
               <DialogTitle>Create License</DialogTitle>
               <DialogDescription>
@@ -170,8 +172,7 @@ export function LicensesClient({
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       <Card>
         <CardHeader>

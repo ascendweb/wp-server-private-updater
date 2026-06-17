@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { SetPageHeader } from "@/components/set-page-header";
 import { PluginDetailClient } from "./plugin-detail-client";
 
 export default async function PluginDetailPage({
@@ -26,13 +27,13 @@ export default async function PluginDetailPage({
 
   return (
     <div className="space-y-6">
+      <SetPageHeader title={plugin.name} />
       <div>
         <Link href="/plugins" className="text-sm text-muted-foreground hover:underline">
           &larr; Back to Plugins
         </Link>
-        <h1 className="text-3xl font-bold mt-2">{plugin.name}</h1>
         {plugin.description && (
-          <p className="text-muted-foreground">{plugin.description}</p>
+          <p className="text-muted-foreground mt-1">{plugin.description}</p>
         )}
       </div>
 

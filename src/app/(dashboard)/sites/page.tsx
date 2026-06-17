@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { usePageHeader } from "@/components/page-header";
 
 interface SiteEntry {
   id: string;
@@ -35,6 +36,8 @@ export default function SitesPage() {
   const [sites, setSites] = useState<SiteEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  usePageHeader("Sites");
+
   useEffect(() => {
     async function load() {
       const res = await fetch("/api/v1/sites");
@@ -48,7 +51,6 @@ export default function SitesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Connected Sites</h1>
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>
