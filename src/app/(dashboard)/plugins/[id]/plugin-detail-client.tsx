@@ -140,7 +140,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     const pa = a.split(".").map(Number);
     const pb = b.split(".").map(Number);
     for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-      const x = pa[i] || 0, y = pb[i] || 0;
+      const x = pa[i] || 0,
+        y = pb[i] || 0;
       if (x > y) return true;
       if (x < y) return false;
     }
@@ -223,7 +224,9 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                           {sp.siteUrl}
                         </Link>
                         {!sp.isActive && (
-                          <Badge variant="subtle" className="ml-2">Inactive</Badge>
+                          <Badge variant="subtle" className="ml-2">
+                            Inactive
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -275,15 +278,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                             </button>
                           )}
                           {bumpable && editingId !== sp.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => bumpSite(sp.siteId)}
-                              disabled={bumpingId === sp.siteId}
-                            >
+                            <Button variant="ghost" size="sm" title="Bump To Latest" className="group h-6 px-2 text-xs bg-muted/30" onClick={() => bumpSite(sp.siteId)} disabled={bumpingId === sp.siteId}>
                               <ArrowUp className="mr-1 h-3 w-3" />
-                              Bump
                             </Button>
                           )}
                         </div>
