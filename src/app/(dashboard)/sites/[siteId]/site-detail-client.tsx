@@ -7,17 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Lock, Unlock, RefreshCw, Download, MoreHorizontal, History, CheckCircle, XCircle, Clock, Loader2, Trash2 } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, CheckCircle, XCircle, Clock, Loader2, Trash2, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
-import { toggleLock, sendCommand, deleteSite } from "./actions";
+import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
 
 interface SitePlugin {
   id: string;
   pluginSlug: string;
   pluginName: string;
   installedVersion: string;
+  availableVersion: string | null;
+  autoSync: boolean;
   isActive: boolean;
-  isLocked: boolean;
   isManaged: boolean;
   lastReportedAt: string;
 }
@@ -50,17 +51,18 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [bumpingId, setBumpingId] = useState<string | null>(null);
 
-  async function handleToggleLock(sitePluginId: string) {
-    setBusy(sitePluginId);
+  async function handleBump(sitePluginId: string, pluginSlug: string) {
+    setBumpingId(sitePluginId);
     try {
-      await toggleLock(sitePluginId);
+      await bumpSitePlugin(sitePluginId, pluginSlug);
       router.refresh();
-      toast.success("Lock toggled");
+      toast.success("Bumped to latest version");
     } catch {
-      toast.error("Failed to toggle lock");
+      toast.error("Failed to bump version");
     }
-    setBusy(null);
+    setBumpingId(null);
   }
 
   async function handleCommand(type: "update" | "install" | "rollback", pluginSlug: string, targetVersion?: string) {
@@ -129,7 +131,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
             <CardTitle className="text-sm font-medium text-muted-foreground">Site Token</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant="outline" className={site.siteToken ? "text-lg border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "text-lg border-amber-300 bg-amber-200 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"}>
+            <Badge variant={site.siteToken ? "success" : "warn"} className="text-lg">
               {site.siteToken ? "Active" : "Pending"}
             </Badge>
           </CardContent>
@@ -139,7 +141,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
       <Card>
         <CardHeader>
           <CardTitle>Installed Plugins</CardTitle>
-          <CardDescription>Plugins reported by this site&apos;s heartbeat. Managed plugins can be updated, locked, or rolled back.</CardDescription>
+          <CardDescription>Plugins reported by this site&apos;s heartbeat. Managed plugins can be updated or rolled back.</CardDescription>
         </CardHeader>
         <CardContent>
           {sitePlugins.length === 0 ? (
@@ -149,9 +151,9 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
               <TableHeader>
                 <TableRow>
                   <TableHead>Plugin</TableHead>
-                  <TableHead>Version</TableHead>
+                  <TableHead>Installed</TableHead>
+                  <TableHead>Available</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Locked</TableHead>
                   <TableHead>Last Reported</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -162,58 +164,80 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                     if (a.isManaged !== b.isManaged) return a.isManaged ? -1 : 1;
                     return a.pluginName.localeCompare(b.pluginName);
                   })
-                  .map((sp) => (
-                    <TableRow key={sp.id}>
-                      <TableCell>
-                        <div className="font-medium">{sp.pluginName}</div>
-                        <code className="text-xs text-muted-foreground">{sp.pluginSlug}</code>
-                      </TableCell>
-                      <TableCell>{sp.installedVersion}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={sp.isActive ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"}>
-                          {sp.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                        {sp.isManaged && (
-                          <Badge variant="outline" className="ml-1">
-                            Managed
+                  .map((sp) => {
+                    const avail = sp.availableVersion || sp.installedVersion;
+                    const differs = avail !== sp.installedVersion;
+
+                    return (
+                      <TableRow key={sp.id} className="h-12">
+                        <TableCell>
+                          <div className="font-medium">{sp.pluginName}</div>
+                          <code className="text-xs text-muted-foreground">{sp.pluginSlug}</code>
+                        </TableCell>
+                        <TableCell>{sp.installedVersion}</TableCell>
+                        <TableCell>
+                          {sp.isManaged ? (
+                            <div className="flex items-center gap-2">
+                              {sp.autoSync ? (
+                                <Badge variant="outline">Auto</Badge>
+                              ) : (
+                                <span className={`text-sm ${differs ? "font-semibold text-blue-600 dark:text-blue-400" : ""}`}>
+                                  v{avail}
+                                </span>
+                              )}
+                              {differs && !sp.autoSync && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleBump(sp.id, sp.pluginSlug)}
+                                  disabled={bumpingId === sp.id}
+                                >
+                                  <ArrowUp className="mr-1 h-3 w-3" />
+                                  Bump
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">&mdash;</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={sp.isActive ? "success" : "subtle"}>
+                            {sp.isActive ? "Active" : "Inactive"}
                           </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {sp.isManaged ? (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleLock(sp.id)} disabled={busy === sp.id} title={sp.isLocked ? "Unlock version" : "Lock at current version"}>
-                            {sp.isLocked ? <Lock className="h-4 w-4 text-orange-500" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground">&mdash;</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{new Date(sp.lastReportedAt).toLocaleString()}</TableCell>
-                      <TableCell>
-                        {sp.isManaged && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleCommand("update", sp.pluginSlug)} disabled={busy === `update-${sp.pluginSlug}` || sp.isLocked}>
-                                <RefreshCw className="mr-2 h-4 w-4" /> Force Update
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  const v = prompt("Enter the version to roll back to:");
-                                  if (v) handleCommand("rollback", sp.pluginSlug, v);
-                                }}
-                                disabled={sp.isLocked}
-                              >
-                                <History className="mr-2 h-4 w-4" /> Rollback
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          {sp.isManaged && (
+                            <Badge variant="outline" className="ml-1">
+                              Managed
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{new Date(sp.lastReportedAt).toLocaleString()}</TableCell>
+                        <TableCell>
+                          {sp.isManaged && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleCommand("update", sp.pluginSlug)} disabled={busy === `update-${sp.pluginSlug}`}>
+                                  <RefreshCw className="mr-2 h-4 w-4" /> Force Update
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    const v = prompt("Enter the version to roll back to:");
+                                    if (v) handleCommand("rollback", sp.pluginSlug, v);
+                                  }}
+                                >
+                                  <History className="mr-2 h-4 w-4" /> Rollback
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           )}

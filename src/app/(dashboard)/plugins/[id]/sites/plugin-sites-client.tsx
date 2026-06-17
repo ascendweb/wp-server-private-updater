@@ -96,14 +96,14 @@ export function PluginSitesClient({ pluginSlug, sites }: { pluginSlug: string; s
                   <TableCell>{s.installedVersion}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className={s.isActive ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"}>
+                      <Badge variant={s.isActive ? "success" : "subtle"}>
                         {s.isActive ? "Active" : "Inactive"}
                       </Badge>
                       {s.isLocked && <Lock className="h-3.5 w-3.5 text-orange-500" />}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={s.hasToken ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-amber-300 bg-amber-200 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"}>
+                    <Badge variant={s.hasToken ? "success" : "warn"}>
                       {s.hasToken ? "Active" : "Pending"}
                     </Badge>
                   </TableCell>

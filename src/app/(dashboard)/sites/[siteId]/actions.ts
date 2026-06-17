@@ -12,14 +12,17 @@ async function requireAuth() {
   if (!session?.user) throw new Error("Unauthorized");
 }
 
-export async function toggleLock(sitePluginId: string) {
+export async function bumpSitePlugin(sitePluginId: string, pluginSlug: string) {
   await requireAuth();
-  const sp = await prisma.sitePlugin.findUniqueOrThrow({
-    where: { id: sitePluginId },
-  });
+  const plugin = await prisma.plugin.findUnique({ where: { slug: pluginSlug } });
+  if (!plugin) throw new Error("Plugin not found");
+
+  const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+  if (!release?.version) throw new Error("No release found");
+
   await prisma.sitePlugin.update({
     where: { id: sitePluginId },
-    data: { isLocked: !sp.isLocked },
+    data: { availableVersion: release.version },
   });
 }
 

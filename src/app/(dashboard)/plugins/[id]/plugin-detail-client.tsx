@@ -1,28 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { RefreshCw, Check, X } from "lucide-react";
+import { RefreshCw, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface PluginInfo {
@@ -44,20 +30,15 @@ interface SitePluginEntry {
   isActive: boolean;
 }
 
-export function PluginDetailClient({
-  plugin,
-  sitePlugins,
-}: {
-  plugin: PluginInfo;
-  sitePlugins: SitePluginEntry[];
-}) {
+export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo; sitePlugins: SitePluginEntry[] }) {
   const router = useRouter();
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [loadingVersion, setLoadingVersion] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [bumpingId, setBumpingId] = useState<string | null>(null);
+  const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   useEffect(() => {
     async function load() {
@@ -83,19 +64,20 @@ export function PluginDetailClient({
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Synced v${data.version} to all non-auto-sync sites`);
+        toast.success(`Bumped v${data.version} to all non-auto-sync sites`);
         router.refresh();
       } else {
         const err = await res.json();
-        toast.error(err.error || "Sync failed");
+        toast.error(err.error || "Bump failed");
       }
     } catch {
-      toast.error("Sync failed");
+      toast.error("Bump failed");
     }
     setSyncing(false);
   }
 
-  async function syncSite(siteId: string) {
+  async function bumpSite(siteId: string) {
+    setBumpingId(siteId);
     try {
       const res = await fetch(`/api/v1/plugins/${plugin.id}/sync`, {
         method: "POST",
@@ -104,26 +86,26 @@ export function PluginDetailClient({
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Synced v${data.version}`);
+        toast.success(`Bumped to v${data.version}`);
         router.refresh();
       } else {
-        toast.error("Sync failed");
+        toast.error("Bump failed");
       }
     } catch {
-      toast.error("Sync failed");
+      toast.error("Bump failed");
     }
+    setBumpingId(null);
   }
 
-  async function saveManualVersion(spId: string) {
+  async function saveVersion(spId: string, value: string) {
     try {
       const res = await fetch(`/api/v1/site-plugins/${spId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ availableVersion: editValue || null }),
+        body: JSON.stringify({ availableVersion: value || null }),
       });
       if (res.ok) {
         toast.success("Version updated");
-        setEditingId(null);
         router.refresh();
       } else {
         toast.error("Failed to update version");
@@ -131,6 +113,7 @@ export function PluginDetailClient({
     } catch {
       toast.error("Failed to update version");
     }
+    setEditingId(null);
   }
 
   async function toggleAutoSync(spId: string, autoSync: boolean) {
@@ -153,19 +136,20 @@ export function PluginDetailClient({
     setTogglingId(null);
   }
 
+  function isDifferent(sp: SitePluginEntry) {
+    const avail = sp.availableVersion || sp.installedVersion;
+    return avail !== sp.installedVersion;
+  }
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Latest Release
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Latest Release</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {loadingVersion ? "..." : latestVersion ? `v${latestVersion}` : "N/A"}
-            </div>
+            <div className="text-3xl font-bold">{loadingVersion ? "..." : latestVersion ? `v${latestVersion}` : "N/A"}</div>
           </CardContent>
         </Card>
         <Card>
@@ -181,12 +165,7 @@ export function PluginDetailClient({
             <CardTitle className="text-sm font-medium text-muted-foreground">GitHub</CardTitle>
           </CardHeader>
           <CardContent>
-            <a
-              href={`https://github.com/${plugin.githubOwner}/${plugin.githubRepo}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm hover:underline text-muted-foreground"
-            >
+            <a href={`https://github.com/${plugin.githubOwner}/${plugin.githubRepo}`} target="_blank" rel="noopener noreferrer" className="text-sm hover:underline text-muted-foreground">
               {plugin.githubOwner}/{plugin.githubRepo}
             </a>
           </CardContent>
@@ -197,24 +176,18 @@ export function PluginDetailClient({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Version Rollout</CardTitle>
-            <CardDescription>
-              Each site is frozen at its installed version by default. Sync the latest release
-              to bump the available version, or enable auto-sync for automatic updates.
-            </CardDescription>
+            <CardDescription>Each site is frozen at its installed version by default. Bump to push the latest release, or enable auto-sync for automatic updates.</CardDescription>
           </div>
           {sitePlugins.length > 0 && (
             <Button onClick={syncAll} disabled={syncing || !latestVersion}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-              Sync Latest to All
+              Bump All
             </Button>
           )}
         </CardHeader>
         <CardContent>
           {sitePlugins.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No sites have this plugin installed yet. Sites will appear here
-              after they report their plugin inventory via heartbeat.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No sites have this plugin installed yet. Sites will appear here after they report their plugin inventory via heartbeat.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -223,91 +196,91 @@ export function PluginDetailClient({
                   <TableHead>Installed</TableHead>
                   <TableHead>Available</TableHead>
                   <TableHead>Auto-Sync</TableHead>
-                  <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sitePlugins.map((sp) => (
-                  <TableRow key={sp.id}>
-                    <TableCell>
-                      <Link
-                        href={`/sites/${sp.siteId}`}
-                        className="font-medium hover:underline"
-                      >
-                        {sp.siteUrl}
-                      </Link>
-                      {!sp.isActive && (
-                        <Badge variant="outline" className="ml-2 border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">Inactive</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">v{sp.installedVersion}</span>
-                    </TableCell>
-                    <TableCell>
-                      {editingId === sp.id ? (
+                {sitePlugins.map((sp) => {
+                  const avail = sp.availableVersion || sp.installedVersion;
+                  const differs = isDifferent(sp);
+
+                  return (
+                    <TableRow key={sp.id} className="h-12">
+                      <TableCell>
+                        <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
+                          {sp.siteUrl}
+                        </Link>
+                        {!sp.isActive && (
+                          <Badge variant="subtle" className="ml-2">Inactive</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">v{sp.installedVersion}</span>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
-                          <Input
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            placeholder="e.g. 1.2.3"
-                            className="h-8 w-32"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => saveManualVersion(sp.id)}
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => setEditingId(null)}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          className="text-left hover:underline cursor-pointer"
-                          onClick={() => {
-                            setEditingId(sp.id);
-                            setEditValue(sp.availableVersion || sp.installedVersion);
-                          }}
-                        >
                           {sp.autoSync ? (
                             <Badge variant="outline">Auto</Badge>
+                          ) : editingId === sp.id ? (
+                            <input
+                              ref={(el) => {
+                                if (el) inputRefs.current.set(sp.id, el);
+                              }}
+                              defaultValue={avail}
+                              className="rounded border border-border bg-transparent px-1.5 py-0.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+                              style={{ fieldSizing: "content", minWidth: "5ch" } as React.CSSProperties}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim();
+                                if (val && val !== avail) {
+                                  saveVersion(sp.id, val);
+                                } else {
+                                  setEditingId(null);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.currentTarget.blur();
+                                } else if (e.key === "Escape") {
+                                  setEditingId(null);
+                                }
+                              }}
+                            />
                           ) : (
-                            <Badge variant="secondary">
-                              v{sp.availableVersion || sp.installedVersion}
-                            </Badge>
+                            <button
+                              className={`text-sm text-left cursor-pointer hover:underline ${differs ? "font-semibold text-blue-600 dark:text-blue-400" : ""}`}
+                              onClick={() => {
+                                setEditingId(sp.id);
+                                setTimeout(() => {
+                                  const input = inputRefs.current.get(sp.id);
+                                  if (input) {
+                                    input.focus();
+                                    input.select();
+                                  }
+                                }, 0);
+                              }}
+                            >
+                              v{avail}
+                            </button>
                           )}
-                        </button>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={sp.autoSync}
-                        onCheckedChange={(checked) => toggleAutoSync(sp.id, checked)}
-                        disabled={togglingId === sp.id}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => syncSite(sp.siteId)}
-                        disabled={!latestVersion || sp.autoSync}
-                        title={sp.autoSync ? "Auto-sync is enabled" : "Sync latest version"}
-                      >
-                        <RefreshCw className="mr-1 h-3.5 w-3.5" />
-                        Sync
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {differs && !sp.autoSync && editingId !== sp.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => bumpSite(sp.siteId)}
+                              disabled={bumpingId === sp.siteId || !latestVersion}
+                            >
+                              <ArrowUp className="mr-1 h-3 w-3" />
+                              Bump
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Switch checked={sp.autoSync} onCheckedChange={(checked) => toggleAutoSync(sp.id, checked)} disabled={togglingId === sp.id} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

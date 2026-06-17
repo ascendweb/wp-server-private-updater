@@ -209,7 +209,7 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                       <Badge variant="secondary">{user.role}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={user.status === "active" ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-red-300 bg-red-200 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"}>
+                      <Badge variant={user.status === "active" ? "success" : "error"}>
                         {user.status}
                       </Badge>
                     </TableCell>

@@ -169,7 +169,7 @@ export function LicensesClient({ initialLicenses }: { initialLicenses: License[]
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={license.status === "active" ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-red-300 bg-red-200 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"}>
+                      <Badge variant={license.status === "active" ? "success" : "error"}>
                         {license.status}
                       </Badge>
                     </TableCell>

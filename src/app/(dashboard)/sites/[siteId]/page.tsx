@@ -60,8 +60,9 @@ export default async function SiteDetailPage({
           pluginSlug: sp.pluginSlug,
           pluginName: sp.plugin?.name || sp.pluginName || sp.pluginSlug,
           installedVersion: sp.installedVersion || "Unknown",
+          availableVersion: sp.availableVersion ?? sp.installedVersion ?? null,
+          autoSync: sp.autoSync,
           isActive: sp.isActive,
-          isLocked: sp.isLocked,
           isManaged: !!sp.pluginId,
           lastReportedAt: sp.lastReportedAt.toISOString(),
         }))}
