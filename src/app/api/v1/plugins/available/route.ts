@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
   }
 
   const plugins = await prisma.plugin.findMany({
-    where: license.pluginId ? { id: license.pluginId } : undefined,
     orderBy: { name: "asc" },
   });
 

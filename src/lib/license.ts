@@ -3,8 +3,7 @@ import type { Site } from "@prisma/client";
 
 export async function validateLicense(
   licenseKey: string,
-  siteUrl: string,
-  pluginSlug?: string
+  siteUrl: string
 ) {
   const normalizedUrl = normalizeSiteUrl(siteUrl);
 
@@ -14,14 +13,10 @@ export async function validateLicense(
       status: "active",
       siteUrl: normalizedUrl,
     },
-    include: { plugin: true, site: true },
+    include: { site: true },
   });
 
   if (!license) return null;
-
-  if (pluginSlug && license.pluginId && license.plugin?.slug !== pluginSlug) {
-    return null;
-  }
 
   const shouldUpdateCheckin =
     !license.lastCheckAt || Date.now() - license.lastCheckAt.getTime() > 15 * 60 * 1000;
@@ -36,10 +31,6 @@ export async function validateLicense(
   return license;
 }
 
-/**
- * Find or create a Site record for the given URL, and ensure the license
- * is linked to it. Returns the Site.
- */
 export async function ensureSite(siteUrl: string, licenseId?: string): Promise<Site> {
   const normalizedUrl = normalizeSiteUrl(siteUrl);
   const pushUrl = normalizedUrl + "/wp-json/wppu/v1";
@@ -67,9 +58,6 @@ export async function ensureSite(siteUrl: string, licenseId?: string): Promise<S
   return site;
 }
 
-/**
- * Ensure the site has a siteToken. Generates one if missing, returns it.
- */
 export async function ensureSiteToken(siteId: string): Promise<string> {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   if (site.siteToken) return site.siteToken;

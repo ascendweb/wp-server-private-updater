@@ -41,8 +41,8 @@ model Plugin {
   requiresPhp         String?      @default("8.0")
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
-  licenses            License[]
   sitePlugins         SitePlugin[]
+  sitePluginVersions  SitePluginVersion[]
 
   @@unique([githubOwner, githubRepo])
 }
@@ -55,16 +55,15 @@ model Site {
   pushUrl   String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-  licenses  License[]
-  plugins   SitePlugin[]
-  commands  Command[]
+  licenses            License[]
+  plugins             SitePlugin[]
+  commands            Command[]
+  sitePluginVersions  SitePluginVersion[]
 }
 
 model License {
   id          String    @id @default(cuid())
   key         String    @unique @default(cuid())
-  pluginId    String?
-  plugin      Plugin?   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
   siteId      String?
   site        Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
   siteUrl     String
@@ -127,4 +126,20 @@ model Command {
 
   @@index([siteId, status])
   @@index([status])
+}
+
+model SitePluginVersion {
+  id               String   @id @default(cuid())
+  siteId           String
+  site             Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  pluginId         String
+  plugin           Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  availableVersion String?
+  autoSync         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([siteId, pluginId])
+  @@index([pluginId])
+  @@index([siteId])
 }

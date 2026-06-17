@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const license = await validateLicense(licenseKey, siteUrl, slug);
+  const license = await validateLicense(licenseKey, siteUrl);
   if (!license) {
     return NextResponse.json({ error: "Invalid or inactive license" }, { status: 403 });
   }
@@ -31,35 +31,44 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Plugin not found", site_token: siteToken }, { status: 404 });
   }
 
-  // Check version lock
-  const sitePlugin = await prisma.sitePlugin.findUnique({
-    where: { siteId_pluginSlug: { siteId: site.id, pluginSlug: slug } },
+  const spv = await prisma.sitePluginVersion.upsert({
+    where: { siteId_pluginId: { siteId: site.id, pluginId: plugin.id } },
+    create: { siteId: site.id, pluginId: plugin.id },
+    update: {},
   });
-
-  if (sitePlugin?.isLocked) {
-    return NextResponse.json({ update: false, locked: true, site_token: siteToken });
-  }
-
-  const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
-  if (!release) {
-    return NextResponse.json({ error: "No releases found", site_token: siteToken }, { status: 404 });
-  }
-
-  if (!isNewerVersion(release.version, version)) {
-    return NextResponse.json({ update: false, version: release.version, site_token: siteToken });
-  }
 
   const serverUrl = getServerOrigin(req);
 
-  return NextResponse.json({
-    slug: plugin.slug,
-    new_version: release.version,
-    package: `${serverUrl}/api/v1/download/${plugin.slug}/${release.version}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
-    sections: {
-      changelog: release.changelog,
-    },
-    site_token: siteToken,
-  });
+  if (spv.autoSync) {
+    const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
+    if (!release) {
+      return NextResponse.json({ update: false, version, site_token: siteToken });
+    }
+
+    if (!isNewerVersion(release.version, version)) {
+      return NextResponse.json({ update: false, version: release.version, site_token: siteToken });
+    }
+
+    return NextResponse.json({
+      slug: plugin.slug,
+      new_version: release.version,
+      package: `${serverUrl}/api/v1/download/${plugin.slug}/${release.version}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+      sections: { changelog: release.changelog },
+      site_token: siteToken,
+    });
+  }
+
+  if (spv.availableVersion && isNewerVersion(spv.availableVersion, version)) {
+    return NextResponse.json({
+      slug: plugin.slug,
+      new_version: spv.availableVersion,
+      package: `${serverUrl}/api/v1/download/${plugin.slug}/${spv.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+      sections: { changelog: "" },
+      site_token: siteToken,
+    });
+  }
+
+  return NextResponse.json({ update: false, version, site_token: siteToken });
 }
 
 function isNewerVersion(latest: string, current: string): boolean {

@@ -73,3 +73,8 @@ export async function getReleaseVersions(pluginSlug: string) {
     return [];
   }
 }
+
+export async function deleteSite(siteId: string) {
+  await requireAuth();
+  await prisma.site.delete({ where: { id: siteId } });
+}

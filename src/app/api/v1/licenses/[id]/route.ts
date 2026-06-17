@@ -18,7 +18,6 @@ export async function PATCH(
     const license = await prisma.license.update({
       where: { id },
       data: body,
-      include: { plugin: { select: { slug: true, name: true } } },
     });
     return NextResponse.json(license);
   } catch {

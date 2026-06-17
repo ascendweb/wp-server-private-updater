@@ -49,19 +49,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  let pluginId: string | null = null;
-  if (payload.plugin_slug) {
-    const plugin = await prisma.plugin.findUnique({
-      where: { slug: payload.plugin_slug },
-    });
-    if (plugin) pluginId = plugin.id;
-  }
-
   const license = await prisma.license.create({
     data: {
       siteUrl: normalizedUrl,
       siteId: site.id,
-      pluginId,
       label: `Auto-connected: ${normalizedUrl}`,
       status: "active",
     },

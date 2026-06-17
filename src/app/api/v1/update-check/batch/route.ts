@@ -42,49 +42,66 @@ export async function POST(req: NextRequest) {
   const serverUrl = getServerOrigin(req);
 
   const uniqueSlugs = [...new Set(normalizedItems.map((p) => p.slug))];
-  const [pluginsBySlug, sitePluginsBySlug] = await Promise.all([
-    prisma.plugin.findMany({
-      where: { slug: { in: uniqueSlugs } },
-    }),
-    prisma.sitePlugin.findMany({
-      where: { siteId: site.id, pluginSlug: { in: uniqueSlugs } },
-    }),
-  ]);
+  const pluginsBySlug = await prisma.plugin.findMany({
+    where: { slug: { in: uniqueSlugs } },
+  });
 
   const pluginMap = new Map(pluginsBySlug.map((p) => [p.slug, p]));
-  const sitePluginMap = new Map(sitePluginsBySlug.map((sp) => [sp.pluginSlug, sp]));
+
+  const spvList = await prisma.sitePluginVersion.findMany({
+    where: {
+      siteId: site.id,
+      pluginId: { in: pluginsBySlug.map((p) => p.id) },
+    },
+  });
+  const spvByPluginId = new Map(spvList.map((spv) => [spv.pluginId, spv]));
 
   const resultsEntries = await Promise.all(
     normalizedItems.map(async ({ slug, version }) => {
-      // Respect plugin-scoped license
-      if (license.pluginId && license.plugin?.slug !== slug) {
-        return [slug, { error: "License is not valid for this plugin" }] as const;
-      }
-
       const plugin = pluginMap.get(slug);
       if (!plugin) return [slug, { error: "Plugin not found" }] as const;
 
-      const sitePlugin = sitePluginMap.get(slug);
-      if (sitePlugin?.isLocked) {
-        return [slug, { update: false, locked: true }] as const;
+      let spv = spvByPluginId.get(plugin.id);
+      if (!spv) {
+        spv = await prisma.sitePluginVersion.upsert({
+          where: { siteId_pluginId: { siteId: site.id, pluginId: plugin.id } },
+          create: { siteId: site.id, pluginId: plugin.id },
+          update: {},
+        });
       }
 
-      const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
-      if (!release) return [slug, { error: "No releases found" }] as const;
+      if (spv.autoSync) {
+        const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
+        if (!release) return [slug, { error: "No releases found" }] as const;
 
-      if (!isNewerVersion(release.version, version)) {
-        return [slug, { update: false, version: release.version }] as const;
+        if (!isNewerVersion(release.version, version)) {
+          return [slug, { update: false, version: release.version }] as const;
+        }
+
+        return [
+          slug,
+          {
+            update: true,
+            new_version: release.version,
+            package: `${serverUrl}/api/v1/download/${plugin.slug}/${release.version}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+            sections: { changelog: release.changelog },
+          },
+        ] as const;
       }
 
-      return [
-        slug,
-        {
-          update: true,
-          new_version: release.version,
-          package: `${serverUrl}/api/v1/download/${plugin.slug}/${release.version}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
-          sections: { changelog: release.changelog },
-        },
-      ] as const;
+      if (spv.availableVersion && isNewerVersion(spv.availableVersion, version)) {
+        return [
+          slug,
+          {
+            update: true,
+            new_version: spv.availableVersion,
+            package: `${serverUrl}/api/v1/download/${plugin.slug}/${spv.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+            sections: { changelog: "" },
+          },
+        ] as const;
+      }
+
+      return [slug, { update: false, version }] as const;
     })
   );
 

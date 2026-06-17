@@ -49,8 +49,6 @@ import { toast } from "sonner";
 interface License {
   id: string;
   key: string;
-  pluginId: string | null;
-  plugin: { id: string; slug: string; name: string } | null;
   siteUrl: string;
   label: string | null;
   status: string;
@@ -58,18 +56,10 @@ interface License {
   createdAt: Date;
 }
 
-interface PluginOption {
-  id: string;
-  slug: string;
-  name: string;
-}
-
 export function LicensesClient({
   initialLicenses,
-  plugins,
 }: {
   initialLicenses: License[];
-  plugins: PluginOption[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -79,10 +69,8 @@ export function LicensesClient({
     e.preventDefault();
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const pluginId = fd.get("pluginId") as string;
     const data = {
       siteUrl: fd.get("siteUrl"),
-      pluginId: pluginId === "all" ? null : pluginId,
       label: fd.get("label") || null,
     };
 
@@ -168,22 +156,6 @@ export function LicensesClient({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pluginId">Plugin Scope</Label>
-                <select
-                  id="pluginId"
-                  name="pluginId"
-                  defaultValue="all"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="all">All plugins</option>
-                  {plugins.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="label">Label (optional)</Label>
                 <Input
                   id="label"
@@ -206,7 +178,7 @@ export function LicensesClient({
           <CardTitle>License Keys</CardTitle>
           <CardDescription>
             Manage license keys that authorize WordPress sites to receive
-            updates.
+            updates. Each license grants access to all plugins.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -220,7 +192,6 @@ export function LicensesClient({
                 <TableRow>
                   <TableHead>Key</TableHead>
                   <TableHead>Site</TableHead>
-                  <TableHead>Plugin</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Check-in</TableHead>
                   <TableHead className="w-12" />
@@ -250,11 +221,6 @@ export function LicensesClient({
                       )}
                     </TableCell>
                     <TableCell className="text-sm">{license.siteUrl}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {license.plugin?.name || "All plugins"}
-                      </Badge>
-                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={

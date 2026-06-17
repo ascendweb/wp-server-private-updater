@@ -36,9 +36,10 @@ import {
   XCircle,
   Clock,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { toggleLock, sendCommand } from "./actions";
+import { toggleLock, sendCommand, deleteSite } from "./actions";
 
 interface SitePlugin {
   id: string;
@@ -88,6 +89,7 @@ export function SiteDetailClient({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleToggleLock(sitePluginId: string) {
     setBusy(sitePluginId);
@@ -116,6 +118,19 @@ export function SiteDetailClient({
       toast.error(`Failed to send ${type} command`);
     }
     setBusy(null);
+  }
+
+  async function handleDeleteSite() {
+    if (!confirm(`Delete site "${site.url}" and all its licenses and data? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await deleteSite(site.id);
+      toast.success("Site deleted");
+      router.push("/sites");
+    } catch {
+      toast.error("Failed to delete site");
+      setDeleting(false);
+    }
   }
 
   function statusIcon(status: string) {
@@ -227,7 +242,7 @@ export function SiteDetailClient({
                           )}
                         </Button>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">&mdash;</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -366,7 +381,7 @@ export function SiteDetailClient({
                       <TableCell className="text-sm text-muted-foreground">
                         {cmd.completedAt
                           ? new Date(cmd.completedAt).toLocaleString()
-                          : "—"}
+                          : "\u2014"}
                       </TableCell>
                     </TableRow>
                   );
@@ -374,6 +389,25 @@ export function SiteDetailClient({
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          <CardDescription>
+            Permanently delete this site and all its associated data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteSite}
+            disabled={deleting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {deleting ? "Deleting..." : "Delete Site"}
+          </Button>
         </CardContent>
       </Card>
     </>

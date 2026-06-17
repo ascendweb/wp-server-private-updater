@@ -16,7 +16,6 @@ export async function GET(
   const { id } = await params;
   const plugin = await prisma.plugin.findUnique({
     where: { id },
-    include: { licenses: true },
   });
 
   if (!plugin) {

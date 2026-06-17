@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
     valid: true,
     license: {
       status: license.status,
-      plugin_slug: license.plugin?.slug ?? null,
     },
   });
 }

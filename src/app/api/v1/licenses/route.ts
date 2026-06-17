@@ -11,7 +11,6 @@ export async function GET() {
 
   const licenses = await prisma.license.findMany({
     orderBy: { createdAt: "desc" },
-    include: { plugin: { select: { slug: true, name: true } } },
   });
 
   return NextResponse.json(licenses);
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { siteUrl, pluginId, label } = body;
+  const { siteUrl, label } = body;
 
   if (!siteUrl) {
     return NextResponse.json({ error: "Missing siteUrl" }, { status: 400 });
@@ -33,11 +32,9 @@ export async function POST(req: NextRequest) {
   const license = await prisma.license.create({
     data: {
       siteUrl: normalizeSiteUrl(siteUrl),
-      pluginId: pluginId || null,
       label: label || null,
       status: "active",
     },
-    include: { plugin: { select: { slug: true, name: true } } },
   });
 
   return NextResponse.json(license, { status: 201 });

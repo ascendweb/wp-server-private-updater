@@ -11,7 +11,6 @@ export async function GET() {
 
   const plugins = await prisma.plugin.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { licenses: true } } },
   });
 
   return NextResponse.json(plugins);

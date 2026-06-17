@@ -15,7 +15,7 @@ export async function GET(
     return NextResponse.json({ error: "Missing license_key or site_url" }, { status: 400 });
   }
 
-  const license = await validateLicense(licenseKey, siteUrl, slug);
+  const license = await validateLicense(licenseKey, siteUrl);
   if (!license) {
     return NextResponse.json({ error: "Invalid or inactive license" }, { status: 403 });
   }
