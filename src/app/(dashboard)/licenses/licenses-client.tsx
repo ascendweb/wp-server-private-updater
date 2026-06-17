@@ -5,45 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Plus,
-  MoreHorizontal,
-  Ban,
-  Trash2,
-  CheckCircle,
-  Copy,
-  Link2,
-} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, MoreHorizontal, Ban, Trash2, CheckCircle, Copy, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 
@@ -57,11 +24,7 @@ interface License {
   createdAt: Date;
 }
 
-export function LicensesClient({
-  initialLicenses,
-}: {
-  initialLicenses: License[];
-}) {
+export function LicensesClient({ initialLicenses }: { initialLicenses: License[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -70,7 +33,7 @@ export function LicensesClient({
     "Licenses",
     <Button onClick={() => setOpen(true)}>
       <Plus className="mr-2 h-4 w-4" /> Create License
-    </Button>
+    </Button>,
   );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -142,52 +105,36 @@ export function LicensesClient({
     <div className="space-y-6">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create License</DialogTitle>
-              <DialogDescription>
-                Generate a new license key for a WordPress site.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="siteUrl">Site URL</Label>
-                <Input
-                  id="siteUrl"
-                  name="siteUrl"
-                  placeholder="https://example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="label">Label (optional)</Label>
-                <Input
-                  id="label"
-                  name="label"
-                  placeholder="Client name or note"
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Creating..." : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create License</DialogTitle>
+            <DialogDescription>Generate a new license key for a WordPress site.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="siteUrl">Site URL</Label>
+              <Input id="siteUrl" name="siteUrl" placeholder="https://example.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="label">Label (optional)</Label>
+              <Input id="label" name="label" placeholder="Client name or note" />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Creating..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
       </Dialog>
 
       <Card>
         <CardHeader>
           <CardTitle>License Keys</CardTitle>
-          <CardDescription>
-            Manage license keys that authorize WordPress sites to receive
-            updates. Each license grants access to all plugins.
-          </CardDescription>
+          <CardDescription>Manage license keys that authorize WordPress sites to receive updates. Each license grants access to all plugins.</CardDescription>
         </CardHeader>
         <CardContent>
           {initialLicenses.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No licenses created yet. Create one to authorize a site.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No licenses created yet. Create one to authorize a site.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -204,49 +151,29 @@ export function LicensesClient({
                   <TableRow key={license.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                          {license.key.slice(0, 12)}...
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => copyKey(license.key)}
-                        >
+                        <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{license.key.slice(0, 12)}...</code>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyKey(license.key)}>
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
-                      {license.label && !license.label.startsWith("Auto-connected:") && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {license.label}
-                        </div>
-                      )}
+                      {license.label && !license.label.startsWith("Auto-connected:") && <div className="text-xs text-muted-foreground mt-1">{license.label}</div>}
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="flex items-center gap-1.5">
                         {license.siteUrl}
                         {license.label?.startsWith("Auto-connected:") && (
-                          <span title="Auto-connected"><Link2 className="h-3.5 w-3.5 text-blue-500" /></span>
+                          <span title="Auto-connected">
+                            <Link2 className="h-3.5 w-3.5 text-blue-500" />
+                          </span>
                         )}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          license.status === "active"
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                            : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
-                        }
-                      >
+                      <Badge variant="outline" className={license.status === "active" ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-red-300 bg-red-200 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"}>
                         {license.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {license.lastCheckAt
-                        ? new Date(license.lastCheckAt).toLocaleDateString()
-                        : "Never"}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{license.lastCheckAt ? new Date(license.lastCheckAt).toLocaleDateString() : "Never"}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
@@ -254,23 +181,15 @@ export function LicensesClient({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {license.status === "active" ? (
-                            <DropdownMenuItem
-                              onClick={() => handleRevoke(license.id)}
-                            >
+                            <DropdownMenuItem onClick={() => handleRevoke(license.id)}>
                               <Ban className="mr-2 h-4 w-4" /> Revoke
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem
-                              onClick={() => handleActivate(license.id)}
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />{" "}
-                              Activate
+                            <DropdownMenuItem onClick={() => handleActivate(license.id)}>
+                              <CheckCircle className="mr-2 h-4 w-4" /> Activate
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDelete(license.id)}
-                          >
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(license.id)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>

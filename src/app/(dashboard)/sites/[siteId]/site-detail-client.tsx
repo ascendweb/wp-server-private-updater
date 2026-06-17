@@ -3,41 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Lock,
-  Unlock,
-  RefreshCw,
-  Download,
-  MoreHorizontal,
-  History,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Loader2,
-  Trash2,
-} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Lock, Unlock, RefreshCw, Download, MoreHorizontal, History, CheckCircle, XCircle, Clock, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { toggleLock, sendCommand, deleteSite } from "./actions";
 
@@ -76,17 +46,7 @@ interface SiteInfo {
   licenseCount: number;
 }
 
-export function SiteDetailClient({
-  site,
-  sitePlugins,
-  commands,
-  availableToInstall,
-}: {
-  site: SiteInfo;
-  sitePlugins: SitePlugin[];
-  commands: CommandEntry[];
-  availableToInstall: AvailablePlugin[];
-}) {
+export function SiteDetailClient({ site, sitePlugins, commands, availableToInstall }: { site: SiteInfo; sitePlugins: SitePlugin[]; commands: CommandEntry[]; availableToInstall: AvailablePlugin[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -103,11 +63,7 @@ export function SiteDetailClient({
     setBusy(null);
   }
 
-  async function handleCommand(
-    type: "update" | "install" | "rollback",
-    pluginSlug: string,
-    targetVersion?: string
-  ) {
+  async function handleCommand(type: "update" | "install" | "rollback", pluginSlug: string, targetVersion?: string) {
     const key = `${type}-${pluginSlug}`;
     setBusy(key);
     try {
@@ -173,14 +129,7 @@ export function SiteDetailClient({
             <CardTitle className="text-sm font-medium text-muted-foreground">Site Token</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge
-              variant="outline"
-              className={
-                site.siteToken
-                  ? "text-lg border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                  : "text-lg border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
-              }
-            >
+            <Badge variant="outline" className={site.siteToken ? "text-lg border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "text-lg border-amber-300 bg-amber-200 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"}>
               {site.siteToken ? "Active" : "Pending"}
             </Badge>
           </CardContent>
@@ -190,15 +139,11 @@ export function SiteDetailClient({
       <Card>
         <CardHeader>
           <CardTitle>Installed Plugins</CardTitle>
-          <CardDescription>
-            Plugins reported by this site&apos;s heartbeat. Managed plugins can be updated, locked, or rolled back.
-          </CardDescription>
+          <CardDescription>Plugins reported by this site&apos;s heartbeat. Managed plugins can be updated, locked, or rolled back.</CardDescription>
         </CardHeader>
         <CardContent>
           {sitePlugins.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No plugins reported yet. The site will report its plugin inventory on its next heartbeat.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No plugins reported yet. The site will report its plugin inventory on its next heartbeat.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -218,78 +163,57 @@ export function SiteDetailClient({
                     return a.pluginName.localeCompare(b.pluginName);
                   })
                   .map((sp) => (
-                  <TableRow key={sp.id}>
-                    <TableCell>
-                      <div className="font-medium">{sp.pluginName}</div>
-                      <code className="text-xs text-muted-foreground">{sp.pluginSlug}</code>
-                    </TableCell>
-                    <TableCell>{sp.installedVersion}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          sp.isActive
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                            : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
-                        }
-                      >
-                        {sp.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                      {sp.isManaged && (
-                        <Badge variant="outline" className="ml-1">Managed</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {sp.isManaged ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleToggleLock(sp.id)}
-                          disabled={busy === sp.id}
-                          title={sp.isLocked ? "Unlock version" : "Lock at current version"}
-                        >
-                          {sp.isLocked ? (
-                            <Lock className="h-4 w-4 text-orange-500" />
-                          ) : (
-                            <Unlock className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground">&mdash;</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(sp.lastReportedAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {sp.isManaged && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                    <TableRow key={sp.id}>
+                      <TableCell>
+                        <div className="font-medium">{sp.pluginName}</div>
+                        <code className="text-xs text-muted-foreground">{sp.pluginSlug}</code>
+                      </TableCell>
+                      <TableCell>{sp.installedVersion}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={sp.isActive ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"}>
+                          {sp.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                        {sp.isManaged && (
+                          <Badge variant="outline" className="ml-1">
+                            Managed
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {sp.isManaged ? (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleLock(sp.id)} disabled={busy === sp.id} title={sp.isLocked ? "Unlock version" : "Lock at current version"}>
+                            {sp.isLocked ? <Lock className="h-4 w-4 text-orange-500" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">&mdash;</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{new Date(sp.lastReportedAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {sp.isManaged && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
                               <MoreHorizontal className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleCommand("update", sp.pluginSlug)}
-                              disabled={busy === `update-${sp.pluginSlug}` || sp.isLocked}
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4" /> Force Update
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                const v = prompt("Enter the version to roll back to:");
-                                if (v) handleCommand("rollback", sp.pluginSlug, v);
-                              }}
-                              disabled={sp.isLocked}
-                            >
-                              <History className="mr-2 h-4 w-4" /> Rollback
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleCommand("update", sp.pluginSlug)} disabled={busy === `update-${sp.pluginSlug}` || sp.isLocked}>
+                                <RefreshCw className="mr-2 h-4 w-4" /> Force Update
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const v = prompt("Enter the version to roll back to:");
+                                  if (v) handleCommand("rollback", sp.pluginSlug, v);
+                                }}
+                                disabled={sp.isLocked}
+                              >
+                                <History className="mr-2 h-4 w-4" /> Rollback
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           )}
@@ -300,9 +224,7 @@ export function SiteDetailClient({
         <Card>
           <CardHeader>
             <CardTitle>Available to Install</CardTitle>
-            <CardDescription>
-              Managed plugins not yet installed on this site.
-            </CardDescription>
+            <CardDescription>Managed plugins not yet installed on this site.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -321,11 +243,7 @@ export function SiteDetailClient({
                       <Badge variant="secondary">{p.slug}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => handleCommand("install", p.slug)}
-                        disabled={busy === `install-${p.slug}`}
-                      >
+                      <Button size="sm" onClick={() => handleCommand("install", p.slug)} disabled={busy === `install-${p.slug}`}>
                         <Download className="mr-2 h-4 w-4" /> Install
                       </Button>
                     </TableCell>
@@ -340,15 +258,11 @@ export function SiteDetailClient({
       <Card>
         <CardHeader>
           <CardTitle>Command History</CardTitle>
-          <CardDescription>
-            Recent commands sent to this site.
-          </CardDescription>
+          <CardDescription>Recent commands sent to this site.</CardDescription>
         </CardHeader>
         <CardContent>
           {commands.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No commands sent yet.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No commands sent yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -385,18 +299,10 @@ export function SiteDetailClient({
                           {statusIcon(cmd.status)}
                           <span className="text-sm">{cmd.status}</span>
                         </div>
-                        {resultMsg && (
-                          <div className="text-xs text-muted-foreground mt-0.5">{resultMsg}</div>
-                        )}
+                        {resultMsg && <div className="text-xs text-muted-foreground mt-0.5">{resultMsg}</div>}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(cmd.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {cmd.completedAt
-                          ? new Date(cmd.completedAt).toLocaleString()
-                          : "\u2014"}
-                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{new Date(cmd.createdAt).toLocaleString()}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{cmd.completedAt ? new Date(cmd.completedAt).toLocaleString() : "\u2014"}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -409,16 +315,10 @@ export function SiteDetailClient({
       <Card className="border-destructive">
         <CardHeader>
           <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
-            Permanently delete this site and all its associated data.
-          </CardDescription>
+          <CardDescription>Permanently delete this site and all its associated data.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            variant="destructive"
-            onClick={handleDeleteSite}
-            disabled={deleting}
-          >
+          <Button variant="destructive" onClick={handleDeleteSite} disabled={deleting}>
             <Trash2 className="mr-2 h-4 w-4" />
             {deleting ? "Deleting..." : "Delete Site"}
           </Button>

@@ -2,21 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { usePageHeader } from "@/components/page-header";
 
@@ -54,17 +41,13 @@ export default function SitesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>
-          <CardDescription>
-            WordPress sites connected to the update server. Click a site to manage its plugins.
-          </CardDescription>
+          <CardDescription>WordPress sites connected to the update server. Click a site to manage its plugins.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
           ) : sites.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No connected sites yet. Sites appear here once a license is created and checked in.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No connected sites yet. Sites appear here once a license is created and checked in.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -78,47 +61,16 @@ export default function SitesPage() {
               </TableHeader>
               <TableBody>
                 {sites.map((site) => (
-                  <TableRow
-                    key={site.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/sites/${site.id}`)}
-                  >
+                  <TableRow key={site.id} className="cursor-pointer" onClick={() => router.push(`/sites/${site.id}`)}>
                     <TableCell className="font-medium">{site.url}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {site.pluginNames.length > 0 ? (
-                          site.pluginNames.map((name) => (
-                            <Badge key={name} variant="outline">
-                              {name}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {site.pluginCount > 0
-                              ? `${site.pluginCount} plugins`
-                              : "Awaiting heartbeat"}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{site.pluginCount > 0 ? site.pluginCount : "—"}</TableCell>
                     <TableCell>{site.licenseCount}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          site.licenseCount > 0
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                            : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
-                        }
-                      >
+                      <Badge variant="outline" className={site.licenseCount > 0 ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"}>
                         {site.licenseCount > 0 ? "Active" : "No license"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {site.lastCheckAt
-                        ? new Date(site.lastCheckAt).toLocaleString()
-                        : "Never"}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{site.lastCheckAt ? new Date(site.lastCheckAt).toLocaleString() : "Never"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

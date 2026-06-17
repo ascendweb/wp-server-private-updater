@@ -5,45 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Plus,
-  MoreHorizontal,
-  Ban,
-  Trash2,
-  CheckCircle,
-  KeyRound,
-} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, MoreHorizontal, Ban, Trash2, CheckCircle, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 
@@ -74,7 +41,7 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
     "Users",
     <Button onClick={() => setCreateOpen(true)}>
       <Plus className="mr-2 h-4 w-4" /> Create User
-    </Button>
+    </Button>,
   );
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
@@ -176,58 +143,40 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
     <div className="space-y-6">
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create User</DialogTitle>
-              <DialogDescription>
-                Add a new user with email and password credentials.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name (optional)</Label>
-                <Input id="name" name="name" placeholder="Jane Smith" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="user@example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={8}
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Creating..." : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create User</DialogTitle>
+            <DialogDescription>Add a new user with email and password credentials.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name (optional)</Label>
+              <Input id="name" name="name" placeholder="Jane Smith" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" placeholder="user@example.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" name="password" type="password" required minLength={8} />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Creating..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
       </Dialog>
 
       <Card>
         <CardHeader>
           <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            Manage users who can access the admin dashboard.
-          </CardDescription>
+          <CardDescription>Manage users who can access the admin dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
           {initialUsers.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No users found.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No users found.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -244,9 +193,7 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
               <TableBody>
                 {initialUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="text-sm font-medium">
-                      {user.name || <span className="text-muted-foreground">--</span>}
-                    </TableCell>
+                    <TableCell className="text-sm font-medium">{user.name || <span className="text-muted-foreground">--</span>}</TableCell>
                     <TableCell className="text-sm">{user.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
@@ -255,36 +202,21 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                             {providerLabel[a.provider] ?? a.provider}
                           </Badge>
                         ))}
-                        {user.accounts.length === 0 && (
-                          <span className="text-xs text-muted-foreground">None</span>
-                        )}
+                        {user.accounts.length === 0 && <span className="text-xs text-muted-foreground">None</span>}
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{user.role}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          user.status === "active"
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                            : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
-                        }
-                      >
+                      <Badge variant="outline" className={user.status === "active" ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-red-300 bg-red-200 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"}>
                         {user.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" size="icon" className="h-8 w-8" />
-                          }
-                        >
+                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -297,16 +229,11 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                               <CheckCircle className="mr-2 h-4 w-4" /> Enable
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={() => openResetDialog(user.id)}
-                          >
+                          <DropdownMenuItem onClick={() => openResetDialog(user.id)}>
                             <KeyRound className="mr-2 h-4 w-4" /> Reset Password
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDelete(user.id)}
-                          >
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(user.id)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -324,20 +251,12 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
-            <DialogDescription>
-              Set a new password for this user.
-            </DialogDescription>
+            <DialogDescription>Set a new password for this user.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="reset-password">New Password</Label>
-              <Input
-                id="reset-password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-              />
+              <Input id="reset-password" name="password" type="password" required minLength={8} />
             </div>
             <DialogFooter>
               <Button type="submit" disabled={loading}>

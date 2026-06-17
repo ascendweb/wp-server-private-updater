@@ -2,26 +2,12 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { SetPageHeader } from "@/components/set-page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Puzzle, KeyRound, Globe, Activity, Terminal, Shield } from "lucide-react";
 
 export default async function DashboardPage() {
-  const [
-    pluginCount,
-    activeLicenses,
-    recentCheckins,
-    siteCount,
-    sitesWithToken,
-    recentCommands,
-  ] = await Promise.all([
+  const [pluginCount, activeLicenses, recentCheckins, siteCount, sitesWithToken, recentCommands] = await Promise.all([
     prisma.plugin.count(),
     prisma.license.count({ where: { status: "active" } }),
     prisma.license.count({
@@ -54,9 +40,7 @@ export default async function DashboardPage() {
         {stats.slice(0, 5).map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -69,15 +53,11 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Commands</CardTitle>
-          <CardDescription>
-            Latest commands dispatched to connected sites.
-          </CardDescription>
+          <CardDescription>Latest commands dispatched to connected sites.</CardDescription>
         </CardHeader>
         <CardContent>
           {recentCommands.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No commands dispatched yet.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No commands dispatched yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -93,10 +73,7 @@ export default async function DashboardPage() {
                 {recentCommands.map((cmd) => (
                   <TableRow key={cmd.id}>
                     <TableCell>
-                      <Link
-                        href={`/sites/${cmd.site.id}`}
-                        className="text-sm hover:underline"
-                      >
+                      <Link href={`/sites/${cmd.site.id}`} className="text-sm hover:underline">
                         {cmd.site.url}
                       </Link>
                     </TableCell>
@@ -105,22 +82,11 @@ export default async function DashboardPage() {
                     </TableCell>
                     <TableCell className="font-medium">{cmd.pluginSlug}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          cmd.status === "completed"
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                            : cmd.status === "failed"
-                              ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
-                              : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
-                        }
-                      >
+                      <Badge variant="outline" className={cmd.status === "completed" ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : cmd.status === "failed" ? "border-red-300 bg-red-200 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400" : "border-amber-300 bg-amber-200 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"}>
                         {cmd.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {cmd.createdAt.toLocaleString()}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{cmd.createdAt.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

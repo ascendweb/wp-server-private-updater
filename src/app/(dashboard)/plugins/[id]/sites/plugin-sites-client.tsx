@@ -4,21 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -35,13 +22,7 @@ interface SiteEntry {
   lastReportedAt: string;
 }
 
-export function PluginSitesClient({
-  pluginSlug,
-  sites,
-}: {
-  pluginSlug: string;
-  sites: SiteEntry[];
-}) {
+export function PluginSitesClient({ pluginSlug, sites }: { pluginSlug: string; sites: SiteEntry[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -83,10 +64,7 @@ export function PluginSitesClient({
           </CardDescription>
         </div>
         {sites.length > 0 && (
-          <Button
-            onClick={handleUpdateAll}
-            disabled={updatingAll || unlockedCount === 0}
-          >
+          <Button onClick={handleUpdateAll} disabled={updatingAll || unlockedCount === 0}>
             <RefreshCw className={`mr-2 h-4 w-4 ${updatingAll ? "animate-spin" : ""}`} />
             Update All Unlocked
           </Button>
@@ -94,9 +72,7 @@ export function PluginSitesClient({
       </CardHeader>
       <CardContent>
         {sites.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            No sites have reported this plugin installed yet.
-          </p>
+          <p className="text-sm text-muted-foreground py-8 text-center">No sites have reported this plugin installed yet.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -113,55 +89,27 @@ export function PluginSitesClient({
               {sites.map((s) => (
                 <TableRow key={s.siteId}>
                   <TableCell>
-                    <Link
-                      href={`/sites/${s.siteId}`}
-                      className="font-medium hover:underline"
-                    >
+                    <Link href={`/sites/${s.siteId}`} className="font-medium hover:underline">
                       {s.siteUrl}
                     </Link>
                   </TableCell>
                   <TableCell>{s.installedVersion}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <Badge
-                        variant="outline"
-                        className={
-                          s.isActive
-                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                            : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
-                        }
-                      >
+                      <Badge variant="outline" className={s.isActive ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"}>
                         {s.isActive ? "Active" : "Inactive"}
                       </Badge>
-                      {s.isLocked && (
-                        <Lock className="h-3.5 w-3.5 text-orange-500" />
-                      )}
+                      {s.isLocked && <Lock className="h-3.5 w-3.5 text-orange-500" />}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        s.hasToken
-                          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                          : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
-                      }
-                    >
+                    <Badge variant="outline" className={s.hasToken ? "border-green-300 bg-green-200 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400" : "border-amber-300 bg-amber-200 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"}>
                       {s.hasToken ? "Active" : "Pending"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(s.lastReportedAt).toLocaleString()}
-                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{new Date(s.lastReportedAt).toLocaleString()}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleUpdateSite(s.siteId)}
-                      disabled={busy === s.siteId || s.isLocked}
-                      title={s.isLocked ? "Site is version-locked" : "Force update"}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateSite(s.siteId)} disabled={busy === s.siteId || s.isLocked} title={s.isLocked ? "Site is version-locked" : "Force update"}>
                       <RefreshCw className={`h-4 w-4 ${busy === s.siteId ? "animate-spin" : ""}`} />
                     </Button>
                   </TableCell>
