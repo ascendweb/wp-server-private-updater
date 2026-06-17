@@ -136,9 +136,21 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     setTogglingId(null);
   }
 
-  function isDifferent(sp: SitePluginEntry) {
+  function isNewer(a: string, b: string): boolean {
+    const pa = a.split(".").map(Number);
+    const pb = b.split(".").map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const x = pa[i] || 0, y = pb[i] || 0;
+      if (x > y) return true;
+      if (x < y) return false;
+    }
+    return false;
+  }
+
+  function canBump(sp: SitePluginEntry) {
+    if (!latestVersion || sp.autoSync) return false;
     const avail = sp.availableVersion || sp.installedVersion;
-    return avail !== sp.installedVersion;
+    return isNewer(latestVersion, avail);
   }
 
   return (
@@ -179,7 +191,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
             <CardDescription>Each site is frozen at its installed version by default. Bump to push the latest release, or enable auto-sync for automatic updates.</CardDescription>
           </div>
           {sitePlugins.length > 0 && (
-            <Button onClick={syncAll} disabled={syncing || !latestVersion}>
+            <Button onClick={syncAll} disabled={syncing || !latestVersion || !sitePlugins.some(canBump)}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
               Bump All
             </Button>
@@ -201,7 +213,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
               <TableBody>
                 {sitePlugins.map((sp) => {
                   const avail = sp.availableVersion || sp.installedVersion;
-                  const differs = isDifferent(sp);
+                  const availDiffersFromInstalled = avail !== sp.installedVersion;
+                  const bumpable = canBump(sp);
 
                   return (
                     <TableRow key={sp.id} className="h-12">
@@ -246,7 +259,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                             />
                           ) : (
                             <button
-                              className={`text-sm text-left cursor-pointer hover:underline ${differs ? "font-semibold text-blue-600 dark:text-blue-400" : ""}`}
+                              className={`text-sm text-left cursor-pointer hover:underline ${availDiffersFromInstalled ? "font-semibold text-blue-600 dark:text-blue-400" : ""}`}
                               onClick={() => {
                                 setEditingId(sp.id);
                                 setTimeout(() => {
@@ -261,13 +274,13 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                               v{avail}
                             </button>
                           )}
-                          {differs && !sp.autoSync && editingId !== sp.id && (
+                          {bumpable && editingId !== sp.id && (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-6 px-2 text-xs"
                               onClick={() => bumpSite(sp.siteId)}
-                              disabled={bumpingId === sp.siteId || !latestVersion}
+                              disabled={bumpingId === sp.siteId}
                             >
                               <ArrowUp className="mr-1 h-3 w-3" />
                               Bump
