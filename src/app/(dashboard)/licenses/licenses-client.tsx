@@ -226,7 +226,7 @@ export function LicensesClient({
                       <span className="flex items-center gap-1.5">
                         {license.siteUrl}
                         {license.label?.startsWith("Auto-connected:") && (
-                          <Link2 className="h-3.5 w-3.5 text-blue-500" title="Auto-connected" />
+                          <span title="Auto-connected"><Link2 className="h-3.5 w-3.5 text-blue-500" /></span>
                         )}
                       </span>
                     </TableCell>
