@@ -23,11 +23,11 @@ export async function PATCH(
   }
 
   try {
-    const spv = await prisma.sitePluginVersion.update({
+    const sp = await prisma.sitePlugin.update({
       where: { id },
       data,
     });
-    return NextResponse.json(spv);
+    return NextResponse.json(sp);
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

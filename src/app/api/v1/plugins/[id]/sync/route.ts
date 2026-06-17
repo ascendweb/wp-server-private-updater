@@ -30,29 +30,14 @@ export async function POST(
     syncVersion = release.version;
   }
 
-  if (siteIds && siteIds.length > 0) {
-    await Promise.all(
-      siteIds.map((siteId) =>
-        prisma.sitePluginVersion.upsert({
-          where: { siteId_pluginId: { siteId, pluginId: plugin.id } },
-          create: { siteId, pluginId: plugin.id, availableVersion: syncVersion },
-          update: { availableVersion: syncVersion },
-        })
-      )
-    );
-  } else {
-    const allSpv = await prisma.sitePluginVersion.findMany({
-      where: { pluginId: plugin.id, autoSync: false },
-    });
-    await Promise.all(
-      allSpv.map((spv) =>
-        prisma.sitePluginVersion.update({
-          where: { id: spv.id },
-          data: { availableVersion: syncVersion },
-        })
-      )
-    );
-  }
+  const where = siteIds && siteIds.length > 0
+    ? { pluginId: plugin.id, siteId: { in: siteIds } }
+    : { pluginId: plugin.id, autoSync: false };
+
+  await prisma.sitePlugin.updateMany({
+    where,
+    data: { availableVersion: syncVersion },
+  });
 
   return NextResponse.json({ success: true, version: syncVersion });
 }

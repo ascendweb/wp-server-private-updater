@@ -42,6 +42,7 @@ import {
   Trash2,
   CheckCircle,
   Copy,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
@@ -215,19 +216,27 @@ export function LicensesClient({
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
-                      {license.label && (
+                      {license.label && !license.label.startsWith("Auto-connected:") && (
                         <div className="text-xs text-muted-foreground mt-1">
                           {license.label}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{license.siteUrl}</TableCell>
+                    <TableCell className="text-sm">
+                      <span className="flex items-center gap-1.5">
+                        {license.siteUrl}
+                        {license.label?.startsWith("Auto-connected:") && (
+                          <Link2 className="h-3.5 w-3.5 text-blue-500" title="Auto-connected" />
+                        )}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
+                        variant="outline"
+                        className={
                           license.status === "active"
-                            ? "default"
-                            : "destructive"
+                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                            : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
                         }
                       >
                         {license.status}

@@ -42,7 +42,6 @@ model Plugin {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   sitePlugins         SitePlugin[]
-  sitePluginVersions  SitePluginVersion[]
 
   @@unique([githubOwner, githubRepo])
 }
@@ -58,7 +57,6 @@ model Site {
   licenses            License[]
   plugins             SitePlugin[]
   commands            Command[]
-  sitePluginVersions  SitePluginVersion[]
 }
 
 model License {
@@ -89,6 +87,8 @@ model SitePlugin {
   installedVersion String?
   isActive         Boolean   @default(false)
   isLocked         Boolean   @default(false)
+  availableVersion String?
+  autoSync         Boolean   @default(false)
   lastReportedAt   DateTime  @default(now())
 
   @@unique([siteId, pluginSlug])
@@ -128,18 +128,3 @@ model Command {
   @@index([status])
 }
 
-model SitePluginVersion {
-  id               String   @id @default(cuid())
-  siteId           String
-  site             Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  pluginId         String
-  plugin           Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
-  availableVersion String?
-  autoSync         Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@unique([siteId, pluginId])
-  @@index([pluginId])
-  @@index([siteId])
-}

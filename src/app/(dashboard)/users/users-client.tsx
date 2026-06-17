@@ -265,7 +265,12 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={user.status === "active" ? "default" : "destructive"}
+                        variant="outline"
+                        className={
+                          user.status === "active"
+                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                            : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
+                        }
                       >
                         {user.status}
                       </Badge>

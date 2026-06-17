@@ -31,15 +31,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Plugin not found", site_token: siteToken }, { status: 404 });
   }
 
-  const spv = await prisma.sitePluginVersion.upsert({
-    where: { siteId_pluginId: { siteId: site.id, pluginId: plugin.id } },
-    create: { siteId: site.id, pluginId: plugin.id },
-    update: {},
+  const sp = await prisma.sitePlugin.upsert({
+    where: { siteId_pluginSlug: { siteId: site.id, pluginSlug: slug } },
+    create: {
+      siteId: site.id,
+      pluginSlug: slug,
+      pluginId: plugin.id,
+      installedVersion: version,
+      availableVersion: version,
+      isActive: true,
+      lastReportedAt: new Date(),
+    },
+    update: {
+      installedVersion: version,
+      lastReportedAt: new Date(),
+    },
   });
 
   const serverUrl = getServerOrigin(req);
 
-  if (spv.autoSync) {
+  if (sp.autoSync) {
     const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
     if (!release) {
       return NextResponse.json({ update: false, version, site_token: siteToken });
@@ -58,11 +69,11 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (spv.availableVersion && isNewerVersion(spv.availableVersion, version)) {
+  if (sp.availableVersion && isNewerVersion(sp.availableVersion, version)) {
     return NextResponse.json({
       slug: plugin.slug,
-      new_version: spv.availableVersion,
-      package: `${serverUrl}/api/v1/download/${plugin.slug}/${spv.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+      new_version: sp.availableVersion,
+      package: `${serverUrl}/api/v1/download/${plugin.slug}/${sp.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
       sections: { changelog: "" },
       site_token: siteToken,
     });

@@ -123,7 +123,14 @@ export function PluginSitesClient({
                   <TableCell>{s.installedVersion}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant={s.isActive ? "default" : "secondary"}>
+                      <Badge
+                        variant="outline"
+                        className={
+                          s.isActive
+                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                            : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                        }
+                      >
                         {s.isActive ? "Active" : "Inactive"}
                       </Badge>
                       {s.isLocked && (
@@ -132,7 +139,14 @@ export function PluginSitesClient({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={s.hasToken ? "default" : "secondary"}>
+                    <Badge
+                      variant="outline"
+                      className={
+                        s.hasToken
+                          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                          : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+                      }
+                    >
                       {s.hasToken ? "Active" : "Pending"}
                     </Badge>
                   </TableCell>

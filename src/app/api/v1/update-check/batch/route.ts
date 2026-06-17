@@ -45,32 +45,39 @@ export async function POST(req: NextRequest) {
   const pluginsBySlug = await prisma.plugin.findMany({
     where: { slug: { in: uniqueSlugs } },
   });
-
   const pluginMap = new Map(pluginsBySlug.map((p) => [p.slug, p]));
 
-  const spvList = await prisma.sitePluginVersion.findMany({
-    where: {
-      siteId: site.id,
-      pluginId: { in: pluginsBySlug.map((p) => p.id) },
-    },
+  const existingSitePlugins = await prisma.sitePlugin.findMany({
+    where: { siteId: site.id, pluginSlug: { in: uniqueSlugs } },
   });
-  const spvByPluginId = new Map(spvList.map((spv) => [spv.pluginId, spv]));
+  const spBySlug = new Map(existingSitePlugins.map((sp) => [sp.pluginSlug, sp]));
 
   const resultsEntries = await Promise.all(
     normalizedItems.map(async ({ slug, version }) => {
       const plugin = pluginMap.get(slug);
       if (!plugin) return [slug, { error: "Plugin not found" }] as const;
 
-      let spv = spvByPluginId.get(plugin.id);
-      if (!spv) {
-        spv = await prisma.sitePluginVersion.upsert({
-          where: { siteId_pluginId: { siteId: site.id, pluginId: plugin.id } },
-          create: { siteId: site.id, pluginId: plugin.id },
-          update: {},
+      let sp = spBySlug.get(slug);
+      if (!sp) {
+        sp = await prisma.sitePlugin.upsert({
+          where: { siteId_pluginSlug: { siteId: site.id, pluginSlug: slug } },
+          create: {
+            siteId: site.id,
+            pluginSlug: slug,
+            pluginId: plugin.id,
+            installedVersion: version,
+            availableVersion: version,
+            isActive: true,
+            lastReportedAt: new Date(),
+          },
+          update: {
+            installedVersion: version,
+            lastReportedAt: new Date(),
+          },
         });
       }
 
-      if (spv.autoSync) {
+      if (sp.autoSync) {
         const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
         if (!release) return [slug, { error: "No releases found" }] as const;
 
@@ -89,13 +96,13 @@ export async function POST(req: NextRequest) {
         ] as const;
       }
 
-      if (spv.availableVersion && isNewerVersion(spv.availableVersion, version)) {
+      if (sp.availableVersion && isNewerVersion(sp.availableVersion, version)) {
         return [
           slug,
           {
             update: true,
-            new_version: spv.availableVersion,
-            package: `${serverUrl}/api/v1/download/${plugin.slug}/${spv.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+            new_version: sp.availableVersion,
+            package: `${serverUrl}/api/v1/download/${plugin.slug}/${sp.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
             sections: { changelog: "" },
           },
         ] as const;

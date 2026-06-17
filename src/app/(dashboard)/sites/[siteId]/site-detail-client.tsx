@@ -173,7 +173,14 @@ export function SiteDetailClient({
             <CardTitle className="text-sm font-medium text-muted-foreground">Site Token</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant={site.siteToken ? "default" : "secondary"} className="text-lg">
+            <Badge
+              variant="outline"
+              className={
+                site.siteToken
+                  ? "text-lg border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                  : "text-lg border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+              }
+            >
               {site.siteToken ? "Active" : "Pending"}
             </Badge>
           </CardContent>
@@ -218,7 +225,14 @@ export function SiteDetailClient({
                     </TableCell>
                     <TableCell>{sp.installedVersion}</TableCell>
                     <TableCell>
-                      <Badge variant={sp.isActive ? "default" : "secondary"}>
+                      <Badge
+                        variant="outline"
+                        className={
+                          sp.isActive
+                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                            : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                        }
+                      >
                         {sp.isActive ? "Active" : "Inactive"}
                       </Badge>
                       {sp.isManaged && (

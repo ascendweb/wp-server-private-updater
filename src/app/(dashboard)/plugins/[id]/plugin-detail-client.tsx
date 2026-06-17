@@ -33,22 +33,23 @@ interface PluginInfo {
   githubRepo: string;
 }
 
-interface SiteVersion {
+interface SitePluginEntry {
   id: string;
   siteId: string;
   siteUrl: string;
   siteLabel: string;
+  installedVersion: string;
   availableVersion: string | null;
   autoSync: boolean;
-  updatedAt: string;
+  isActive: boolean;
 }
 
 export function PluginDetailClient({
   plugin,
-  siteVersions,
+  sitePlugins,
 }: {
   plugin: PluginInfo;
-  siteVersions: SiteVersion[];
+  sitePlugins: SitePluginEntry[];
 }) {
   const router = useRouter();
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
@@ -113,9 +114,9 @@ export function PluginDetailClient({
     }
   }
 
-  async function saveManualVersion(spvId: string) {
+  async function saveManualVersion(spId: string) {
     try {
-      const res = await fetch(`/api/v1/site-plugins/${spvId}`, {
+      const res = await fetch(`/api/v1/site-plugins/${spId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ availableVersion: editValue || null }),
@@ -132,10 +133,10 @@ export function PluginDetailClient({
     }
   }
 
-  async function toggleAutoSync(spvId: string, autoSync: boolean) {
-    setTogglingId(spvId);
+  async function toggleAutoSync(spId: string, autoSync: boolean) {
+    setTogglingId(spId);
     try {
-      const res = await fetch(`/api/v1/site-plugins/${spvId}`, {
+      const res = await fetch(`/api/v1/site-plugins/${spId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ autoSync }),
@@ -172,7 +173,7 @@ export function PluginDetailClient({
             <CardTitle className="text-sm font-medium text-muted-foreground">Sites</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{siteVersions.length}</div>
+            <div className="text-3xl font-bold">{sitePlugins.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -197,11 +198,11 @@ export function PluginDetailClient({
           <div>
             <CardTitle>Version Rollout</CardTitle>
             <CardDescription>
-              Manage which version each site can see. Sites are frozen by default &mdash; sync
-              the latest release or set a manual version to allow updates.
+              Each site is frozen at its installed version by default. Sync the latest release
+              to bump the available version, or enable auto-sync for automatic updates.
             </CardDescription>
           </div>
-          {siteVersions.length > 0 && (
+          {sitePlugins.length > 0 && (
             <Button onClick={syncAll} disabled={syncing || !latestVersion}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
               Sync Latest to All
@@ -209,35 +210,41 @@ export function PluginDetailClient({
           )}
         </CardHeader>
         <CardContent>
-          {siteVersions.length === 0 ? (
+          {sitePlugins.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              No sites have checked in for this plugin yet. Sites will appear here
-              after their first update check.
+              No sites have this plugin installed yet. Sites will appear here
+              after they report their plugin inventory via heartbeat.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Site</TableHead>
-                  <TableHead>Available Version</TableHead>
+                  <TableHead>Installed</TableHead>
+                  <TableHead>Available</TableHead>
                   <TableHead>Auto-Sync</TableHead>
-                  <TableHead>Last Updated</TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {siteVersions.map((sv) => (
-                  <TableRow key={sv.id}>
+                {sitePlugins.map((sp) => (
+                  <TableRow key={sp.id}>
                     <TableCell>
                       <Link
-                        href={`/sites/${sv.siteId}`}
+                        href={`/sites/${sp.siteId}`}
                         className="font-medium hover:underline"
                       >
-                        {sv.siteUrl}
+                        {sp.siteUrl}
                       </Link>
+                      {!sp.isActive && (
+                        <Badge variant="outline" className="ml-2 border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">Inactive</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
-                      {editingId === sv.id ? (
+                      <span className="text-sm">v{sp.installedVersion}</span>
+                    </TableCell>
+                    <TableCell>
+                      {editingId === sp.id ? (
                         <div className="flex items-center gap-2">
                           <Input
                             value={editValue}
@@ -249,7 +256,7 @@ export function PluginDetailClient({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => saveManualVersion(sv.id)}
+                            onClick={() => saveManualVersion(sp.id)}
                           >
                             <Check className="h-3.5 w-3.5" />
                           </Button>
@@ -266,37 +273,34 @@ export function PluginDetailClient({
                         <button
                           className="text-left hover:underline cursor-pointer"
                           onClick={() => {
-                            setEditingId(sv.id);
-                            setEditValue(sv.availableVersion || "");
+                            setEditingId(sp.id);
+                            setEditValue(sp.availableVersion || sp.installedVersion);
                           }}
                         >
-                          {sv.autoSync ? (
+                          {sp.autoSync ? (
                             <Badge variant="outline">Auto</Badge>
-                          ) : sv.availableVersion ? (
-                            <Badge variant="secondary">v{sv.availableVersion}</Badge>
                           ) : (
-                            <span className="text-muted-foreground">Frozen</span>
+                            <Badge variant="secondary">
+                              v{sp.availableVersion || sp.installedVersion}
+                            </Badge>
                           )}
                         </button>
                       )}
                     </TableCell>
                     <TableCell>
                       <Switch
-                        checked={sv.autoSync}
-                        onCheckedChange={(checked) => toggleAutoSync(sv.id, checked)}
-                        disabled={togglingId === sv.id}
+                        checked={sp.autoSync}
+                        onCheckedChange={(checked) => toggleAutoSync(sp.id, checked)}
+                        disabled={togglingId === sp.id}
                       />
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(sv.updatedAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => syncSite(sv.siteId)}
-                        disabled={!latestVersion || sv.autoSync}
-                        title={sv.autoSync ? "Auto-sync is enabled" : "Sync latest version"}
+                        onClick={() => syncSite(sp.siteId)}
+                        disabled={!latestVersion || sp.autoSync}
+                        title={sp.autoSync ? "Auto-sync is enabled" : "Sync latest version"}
                       >
                         <RefreshCw className="mr-1 h-3.5 w-3.5" />
                         Sync

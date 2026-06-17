@@ -103,7 +103,14 @@ export default function SitesPage() {
                     </TableCell>
                     <TableCell>{site.licenseCount}</TableCell>
                     <TableCell>
-                      <Badge variant={site.licenseCount > 0 ? "default" : "secondary"}>
+                      <Badge
+                        variant="outline"
+                        className={
+                          site.licenseCount > 0
+                            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                            : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                        }
+                      >
                         {site.licenseCount > 0 ? "Active" : "No license"}
                       </Badge>
                     </TableCell>

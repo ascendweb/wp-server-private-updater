@@ -3,35 +3,9 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  LayoutDashboard,
-  Puzzle,
-  KeyRound,
-  Globe,
-  Settings,
-  LogOut,
-  ChevronUp,
-  User,
-  Users,
-} from "lucide-react";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LayoutDashboard, Puzzle, KeyRound, Globe, Settings, LogOut, ChevronUp, User, Users } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -47,7 +21,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="inset">
-      <SidebarHeader className="h-16 flex-row items-center gap-0 border-b px-6 py-0">
+      <SidebarHeader className="h-14 flex-row items-center gap-0 px-6 py-0">
         <Link href="/" className="flex items-center gap-2">
           <Puzzle className="h-6 w-6" />
           <span className="text-lg font-semibold">WP Updater</span>
@@ -59,10 +33,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+                const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton render={<Link href={item.href} />} isActive={isActive}>

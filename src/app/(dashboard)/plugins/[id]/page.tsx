@@ -14,7 +14,7 @@ export default async function PluginDetailPage({
   const plugin = await prisma.plugin.findUnique({
     where: { id },
     include: {
-      sitePluginVersions: {
+      sitePlugins: {
         include: {
           site: { select: { id: true, url: true, label: true } },
         },
@@ -45,14 +45,15 @@ export default async function PluginDetailPage({
           githubOwner: plugin.githubOwner,
           githubRepo: plugin.githubRepo,
         }}
-        siteVersions={plugin.sitePluginVersions.map((spv) => ({
-          id: spv.id,
-          siteId: spv.site.id,
-          siteUrl: spv.site.url,
-          siteLabel: spv.site.label || spv.site.url,
-          availableVersion: spv.availableVersion,
-          autoSync: spv.autoSync,
-          updatedAt: spv.updatedAt.toISOString(),
+        sitePlugins={plugin.sitePlugins.map((sp) => ({
+          id: sp.id,
+          siteId: sp.site.id,
+          siteUrl: sp.site.url,
+          siteLabel: sp.site.label || sp.site.url,
+          installedVersion: sp.installedVersion || "Unknown",
+          availableVersion: sp.availableVersion ?? sp.installedVersion ?? null,
+          autoSync: sp.autoSync,
+          isActive: sp.isActive,
         }))}
       />
     </div>
