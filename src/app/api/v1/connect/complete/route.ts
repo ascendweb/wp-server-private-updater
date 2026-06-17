@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedUrl = normalizeSiteUrl(payload.site_url);
-  const pushUrl = normalizedUrl + "/wp-json/wppu/v1";
   const siteToken = crypto.randomUUID();
 
   const site = await prisma.site.upsert({
@@ -40,11 +39,9 @@ export async function POST(req: NextRequest) {
     create: {
       url: normalizedUrl,
       label: normalizedUrl,
-      pushUrl,
       siteToken,
     },
     update: {
-      pushUrl,
       siteToken,
     },
   });

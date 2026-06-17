@@ -33,14 +33,12 @@ export async function validateLicense(
 
 export async function ensureSite(siteUrl: string, licenseId?: string): Promise<Site> {
   const normalizedUrl = normalizeSiteUrl(siteUrl);
-  const pushUrl = normalizedUrl + "/wp-json/wppu/v1";
 
   const site = await prisma.site.upsert({
     where: { url: normalizedUrl },
     create: {
       url: normalizedUrl,
       label: normalizedUrl,
-      pushUrl,
     },
     update: {},
   });
