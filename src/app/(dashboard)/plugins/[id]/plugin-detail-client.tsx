@@ -18,6 +18,7 @@ import {
   RefreshCw,
   ArrowBigRightDash,
   CircleFadingArrowUp,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
@@ -74,7 +75,6 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   const [selectedCommand, setSelectedCommand] = useState<LatestCommand | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const lastClickedIndex = useRef<number | null>(null);
-  const skipCheckboxChange = useRef(false);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -197,27 +197,27 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     });
   }
 
-  function handleRowCheckboxClick(event: React.MouseEvent<HTMLInputElement>, index: number) {
+  function handleCheckboxMouseDown(event: React.MouseEvent, index: number) {
     if (event.shiftKey && lastClickedIndex.current != null) {
       event.preventDefault();
-      skipCheckboxChange.current = true;
       selectIndexRange(lastClickedIndex.current, index);
       lastClickedIndex.current = index;
     }
   }
 
-  function handleRowCheckboxChange(index: number, siteId: string) {
-    if (skipCheckboxChange.current) {
-      skipCheckboxChange.current = false;
-      return;
-    }
-    toggleSite(siteId);
+  function handleCheckboxChange(event: React.ChangeEvent<HTMLInputElement>, index: number, siteId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (event.target.checked) next.add(siteId);
+      else next.delete(siteId);
+      return next;
+    });
     lastClickedIndex.current = index;
   }
 
   function handleRowClick(event: React.MouseEvent, index: number, siteId: string) {
     const target = event.target as HTMLElement;
-    if (target.closest("a, button, input, [data-slot=dropdown-menu-trigger]")) return;
+    if (target.closest("a, button, input, label, [data-slot=dropdown-menu-trigger]")) return;
 
     if (event.shiftKey && lastClickedIndex.current != null) {
       selectIndexRange(lastClickedIndex.current, index);
@@ -465,10 +465,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                 <TableHeader>
                   <TableRow>
                     <TableHead className={`w-10 ${CELL_PAD}`}>
-                      <input
-                        ref={headerCheckboxRef}
-                        type="checkbox"
-                        className="size-4 accent-primary"
+                      <SelectCheckbox
+                        inputRef={headerCheckboxRef}
                         checked={allSelected}
                         onChange={toggleSelectAll}
                         aria-label="Select all sites"
@@ -480,6 +478,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                     <TableHead className={CELL_PAD}>Installed</TableHead>
                     <TableHead className={CELL_PAD}>Available</TableHead>
                     <TableHead className={CELL_PAD}>Status</TableHead>
+                    <TableHead className={CELL_PAD}>Command</TableHead>
                     <TableHead className={`w-12 ${CELL_PAD}`} />
                   </TableRow>
                 </TableHeader>
@@ -494,17 +493,15 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                     return (
                       <TableRow
                         key={sp.id}
-                        className="h-12"
+                        className="h-12 has-[:checked]:bg-muted"
                         data-state={isRowSelected ? "selected" : undefined}
                         onClick={(event) => handleRowClick(event, index, sp.siteId)}
                       >
                         <TableCell className={CELL_PAD}>
-                          <input
-                            type="checkbox"
-                            className="size-4 accent-primary"
+                          <SelectCheckbox
                             checked={isRowSelected}
-                            onClick={(event) => handleRowCheckboxClick(event, index)}
-                            onChange={() => handleRowCheckboxChange(index, sp.siteId)}
+                            onMouseDown={(event) => handleCheckboxMouseDown(event, index)}
+                            onChange={(event) => handleCheckboxChange(event, index, sp.siteId)}
                             aria-label={`Select ${sp.siteUrl}`}
                           />
                         </TableCell>
@@ -567,7 +564,6 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                 }}
                               />
                             )}
-                            <Badge variant={rollout.variant}>{rollout.label}</Badge>
                             {bumpable && editingId !== sp.id && (
                               <Button
                                 variant="ghost"
@@ -581,6 +577,9 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                               </Button>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className={CELL_PAD}>
+                          <Badge variant={rollout.variant}>{rollout.label}</Badge>
                         </TableCell>
                         <TableCell className={CELL_PAD}>
                           {cmd ? (
@@ -673,6 +672,42 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function SelectCheckbox({
+  checked,
+  onChange,
+  onMouseDown,
+  inputRef,
+  "aria-label": ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onMouseDown?: (event: React.MouseEvent<HTMLLabelElement>) => void;
+  inputRef?: React.Ref<HTMLInputElement>;
+  "aria-label": string;
+}) {
+  return (
+    <label
+      className="group relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-input bg-background has-[:checked]:border-primary has-[:checked]:bg-primary has-[:indeterminate]:border-primary has-[:indeterminate]:bg-primary"
+      onMouseDown={onMouseDown}
+    >
+      <input
+        ref={inputRef}
+        type="checkbox"
+        className="sr-only"
+        checked={checked}
+        onChange={onChange}
+        aria-label={ariaLabel}
+      />
+      <Check
+        className="text-primary-foreground opacity-0 group-has-[:checked]:opacity-100 group-has-[:indeterminate]:opacity-100"
+        size={16}
+        strokeWidth={3}
+        absoluteStrokeWidth
+      />
+    </label>
   );
 }
 
