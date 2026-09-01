@@ -15,13 +15,17 @@ export function serializeCommand(command: Command) {
   };
 }
 
-export async function latestCommandsBySite(pluginSlug: string, siteIds: string[]) {
+export async function latestCommandsBySite(
+  pluginSlug: string,
+  siteIds: string[],
+  type?: CommandType
+) {
   if (siteIds.length === 0) {
     return new Map<string, Command>();
   }
 
   const commands = await prisma.command.findMany({
-    where: { pluginSlug, siteId: { in: siteIds } },
+    where: { pluginSlug, siteId: { in: siteIds }, ...(type ? { type } : {}) },
     orderBy: { createdAt: "desc" },
   });
 

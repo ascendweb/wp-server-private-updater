@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   RotateCw,
   MoreHorizontal,
-  CheckCircle,
+  CircleCheck,
   XCircle,
   Clock,
   Loader2,
   RefreshCw,
-  ArrowUp,
+  ArrowBigRightDash,
+  CircleFadingArrowUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
@@ -56,6 +57,8 @@ interface SitePluginEntry {
 }
 
 const INFLIGHT_STATUSES = new Set(["pending", "delivered", "in_progress"]);
+const RECENT_COMMAND_MS = 15 * 60 * 1000;
+const CELL_PAD = "px-5 py-2";
 
 export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo; sitePlugins: SitePluginEntry[] }) {
   const [rows, setRows] = useState(sitePlugins);
@@ -67,14 +70,21 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   const [bulkBusy, setBulkBusy] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [pollKey, setPollKey] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [selectedCommand, setSelectedCommand] = useState<LatestCommand | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const lastClickedIndex = useRef<number | null>(null);
+  const skipCheckboxChange = useRef(false);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setRows(sitePlugins);
   }, [sitePlugins]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -165,30 +175,60 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     }
   }
 
-  function applyRowSelection(event: React.MouseEvent, index: number, siteId: string) {
-    event.preventDefault();
+  function selectIndexRange(from: number, to: number) {
     const ids = rows.map((row) => row.siteId);
+    const start = Math.min(from, to);
+    const end = Math.max(from, to);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (let i = start; i <= end; i++) {
+        next.add(ids[i]);
+      }
+      return next;
+    });
+  }
+
+  function toggleSite(siteId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(siteId)) next.delete(siteId);
+      else next.add(siteId);
+      return next;
+    });
+  }
+
+  function handleRowCheckboxClick(event: React.MouseEvent<HTMLInputElement>, index: number) {
+    if (event.shiftKey && lastClickedIndex.current != null) {
+      event.preventDefault();
+      skipCheckboxChange.current = true;
+      selectIndexRange(lastClickedIndex.current, index);
+      lastClickedIndex.current = index;
+    }
+  }
+
+  function handleRowCheckboxChange(index: number, siteId: string) {
+    if (skipCheckboxChange.current) {
+      skipCheckboxChange.current = false;
+      return;
+    }
+    toggleSite(siteId);
+    lastClickedIndex.current = index;
+  }
+
+  function handleRowClick(event: React.MouseEvent, index: number, siteId: string) {
+    const target = event.target as HTMLElement;
+    if (target.closest("a, button, input, [data-slot=dropdown-menu-trigger]")) return;
 
     if (event.shiftKey && lastClickedIndex.current != null) {
-      const start = Math.min(lastClickedIndex.current, index);
-      const end = Math.max(lastClickedIndex.current, index);
-      setSelected((prev) => {
-        const next = new Set(prev);
-        for (let i = start; i <= end; i++) {
-          next.add(ids[i]);
-        }
-        return next;
-      });
-    } else {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(siteId)) next.delete(siteId);
-        else next.add(siteId);
-        return next;
-      });
+      selectIndexRange(lastClickedIndex.current, index);
+      lastClickedIndex.current = index;
+      return;
     }
 
-    lastClickedIndex.current = index;
+    if (event.metaKey || event.ctrlKey) {
+      toggleSite(siteId);
+      lastClickedIndex.current = index;
+    }
   }
 
   function toggleSelectAll() {
@@ -310,18 +350,6 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     setEditingId(null);
   }
 
-  function isNewer(a: string, b: string): boolean {
-    const pa = a.split(".").map(Number);
-    const pb = b.split(".").map(Number);
-    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-      const x = pa[i] || 0,
-        y = pb[i] || 0;
-      if (x > y) return true;
-      if (x < y) return false;
-    }
-    return false;
-  }
-
   function canBump(sp: SitePluginEntry) {
     if (!latestVersion || sp.autoSync) return false;
     const avail = sp.availableVersion || sp.installedVersion;
@@ -329,6 +357,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   }
 
   const allSelected = rows.length > 0 && selected.size === rows.length;
+  const noneSelected = selected.size === 0;
+  const actionsDisabled = noneSelected || !!bulkBusy;
 
   return (
     <>
@@ -387,48 +417,54 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
             </p>
           ) : (
             <>
-              {selected.size > 0 && (
-                <div className="sticky top-0 z-10 mb-3 flex items-center gap-3 rounded-lg border bg-background px-3 py-2">
-                  <span className="text-sm font-medium">
-                    ({selected.size}) {selected.size === 1 ? "site" : "sites"}
-                  </span>
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleBulkCommand("activate")} disabled={!!bulkBusy}>
-                      Activate
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleBulkCommand("deactivate")} disabled={!!bulkBusy}>
-                      Deactivate
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleBumpSelected} disabled={!!bulkBusy || !latestVersion}>
-                      Bump
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => handleBulkCommand("update")}
-                      disabled={!!bulkBusy}
-                    >
-                      Update
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />} disabled={!!bulkBusy}>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleBulkAutoSync(true)}>Enable auto-sync</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleBulkAutoSync(false)}>Disable auto-sync</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+              <div className="sticky top-0 z-10 mb-3 flex items-center gap-3 rounded-lg border bg-background px-3 py-2">
+                <span className="text-sm font-medium">
+                  ({selected.size}) {selected.size === 1 ? "site" : "sites"}
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => handleBulkCommand("activate")} disabled={actionsDisabled}>
+                    Activate
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleBulkCommand("deactivate")} disabled={actionsDisabled}>
+                    Deactivate
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleBumpSelected} disabled={actionsDisabled || !latestVersion}>
+                    <ArrowBigRightDash />
+                    Bump
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => handleBulkCommand("update")}
+                    disabled={actionsDisabled}
+                  >
+                    <CircleFadingArrowUp />
+                    Update
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" disabled={actionsDisabled} />}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-48">
+                      <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkAutoSync(true)} disabled={actionsDisabled}>
+                        <RefreshCw />
+                        Enable auto-sync
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkAutoSync(false)} disabled={actionsDisabled}>
+                        <RefreshCw />
+                        Disable auto-sync
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              )}
+              </div>
 
               <div className="select-none">
                 <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
+                    <TableHead className={`w-10 ${CELL_PAD}`}>
                       <input
                         ref={headerCheckboxRef}
                         type="checkbox"
@@ -438,61 +474,75 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                         aria-label="Select all sites"
                       />
                     </TableHead>
-                    <TableHead>Site</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead>Installed</TableHead>
-                    <TableHead>Available</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className={`w-full ${CELL_PAD}`}>Site</TableHead>
+                    <TableHead className={CELL_PAD}>Active</TableHead>
+                    <TableHead className={CELL_PAD}>Auto-Sync</TableHead>
+                    <TableHead className={CELL_PAD}>Installed</TableHead>
+                    <TableHead className={CELL_PAD}>Available</TableHead>
+                    <TableHead className={CELL_PAD}>Status</TableHead>
+                    <TableHead className={`w-12 ${CELL_PAD}`} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((sp, index) => {
                     const avail = sp.availableVersion || sp.installedVersion;
-                    const availDiffersFromInstalled = avail !== sp.installedVersion;
                     const bumpable = canBump(sp);
-                    const cmd = sp.latestCommand;
-                    const resultMsg = cmd ? commandResultMessage(cmd) : "";
-                    const preview = truncateMessage(resultMsg, 48);
+                    const cmd = visibleCommand(sp.latestCommand, now);
+                    const isRowSelected = selected.has(sp.siteId);
+                    const rollout = versionStatus(sp.installedVersion, avail, latestVersion);
 
                     return (
                       <TableRow
                         key={sp.id}
                         className="h-12"
-                        onClick={(event) => {
-                          const target = event.target as HTMLElement;
-                          if (target.closest("a, button, input, [data-slot=dropdown-menu-trigger]")) return;
-                          if (event.shiftKey || event.metaKey || event.ctrlKey) {
-                            applyRowSelection(event, index, sp.siteId);
-                          }
-                        }}
+                        data-state={isRowSelected ? "selected" : undefined}
+                        onClick={(event) => handleRowClick(event, index, sp.siteId)}
                       >
-                        <TableCell>
+                        <TableCell className={CELL_PAD}>
                           <input
                             type="checkbox"
                             className="size-4 accent-primary"
-                            checked={selected.has(sp.siteId)}
-                            onClick={(event) => applyRowSelection(event, index, sp.siteId)}
-                            onChange={() => {}}
+                            checked={isRowSelected}
+                            onClick={(event) => handleRowCheckboxClick(event, index)}
+                            onChange={() => handleRowCheckboxChange(index, sp.siteId)}
                             aria-label={`Select ${sp.siteUrl}`}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={`w-full ${CELL_PAD}`}>
                           <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
                             {sp.siteUrl}
                           </Link>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={sp.isActive ? "success" : "subtle"}>{sp.isActive ? "Active" : "Inactive"}</Badge>
+                        <TableCell className={CELL_PAD}>
+                          <span className="text-sm">{sp.isActive ? "Active" : "Inactive"}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={CELL_PAD}>
+                          <span className="text-sm">{sp.autoSync ? "On" : "Off"}</span>
+                        </TableCell>
+                        <TableCell className={CELL_PAD}>
                           <span className="text-sm">v{sp.installedVersion}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={CELL_PAD}>
                           <div className="flex items-center gap-2">
                             {sp.autoSync ? (
-                              <Badge variant="outline">Auto</Badge>
-                            ) : editingId === sp.id ? (
+                              <span className="text-sm">v{avail}</span>
+                            ) : editingId !== sp.id ? (
+                              <button
+                                className="text-sm text-left cursor-pointer hover:underline"
+                                onClick={() => {
+                                  setEditingId(sp.id);
+                                  setTimeout(() => {
+                                    const input = inputRefs.current.get(sp.id);
+                                    if (input) {
+                                      input.focus();
+                                      input.select();
+                                    }
+                                  }, 0);
+                                }}
+                              >
+                                v{avail}
+                              </button>
+                            ) : (
                               <input
                                 ref={(el) => {
                                   if (el) inputRefs.current.set(sp.id, el);
@@ -516,23 +566,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                   }
                                 }}
                               />
-                            ) : (
-                              <button
-                                className={`text-sm text-left cursor-pointer hover:underline ${availDiffersFromInstalled ? "font-semibold text-blue-600 dark:text-blue-400" : ""}`}
-                                onClick={() => {
-                                  setEditingId(sp.id);
-                                  setTimeout(() => {
-                                    const input = inputRefs.current.get(sp.id);
-                                    if (input) {
-                                      input.focus();
-                                      input.select();
-                                    }
-                                  }, 0);
-                                }}
-                              >
-                                v{avail}
-                              </button>
                             )}
+                            <Badge variant={rollout.variant}>{rollout.label}</Badge>
                             {bumpable && editingId !== sp.id && (
                               <Button
                                 variant="ghost"
@@ -542,55 +577,54 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                 onClick={() => handleRowBump(sp.siteId)}
                                 disabled={rowBusy === `bump-${sp.siteId}`}
                               >
-                                <ArrowUp className="mr-1 h-3 w-3" />
+                                <ArrowBigRightDash className="h-3 w-3" />
                               </Button>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[220px] overflow-hidden whitespace-normal">
+                        <TableCell className={CELL_PAD}>
                           {cmd ? (
                             <button
                               type="button"
-                              className="w-full text-left cursor-pointer"
+                              className="flex items-center gap-1.5 cursor-pointer"
                               onClick={() => setSelectedCommand(cmd)}
                             >
-                              <div className="flex items-center gap-1.5">
-                                {statusIcon(cmd.status)}
-                                <span className="text-sm">{formatStatus(cmd.status)}</span>
-                              </div>
-                              {preview && (
-                                <div className="text-xs text-muted-foreground mt-0.5 truncate" title="View full result">
-                                  {preview}
-                                </div>
-                              )}
+                              {statusIcon(cmd.status)}
+                              <span className="text-sm">{formatStatus(cmd.status)}</span>
                             </button>
                           ) : (
                             <span className="text-sm text-muted-foreground">{"\u2014"}</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={CELL_PAD}>
                           <DropdownMenu>
                             <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
                               <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="min-w-48">
                               <DropdownMenuItem
+                                className="whitespace-nowrap"
                                 onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
                                 disabled={rowBusy === `sync-${sp.siteId}`}
                               >
+                                <RefreshCw />
                                 {sp.autoSync ? "Disable auto-sync" : "Enable auto-sync"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                className="whitespace-nowrap"
                                 onClick={() => handleRowUpdate(sp.siteId)}
                                 disabled={rowBusy === `update-${sp.siteId}`}
                               >
-                                <RefreshCw className="mr-2 h-4 w-4" /> Update
+                                <CircleFadingArrowUp />
+                                Update
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                className="whitespace-nowrap"
                                 onClick={() => handleRowBump(sp.siteId)}
                                 disabled={rowBusy === `bump-${sp.siteId}` || sp.autoSync}
                               >
-                                <ArrowUp className="mr-2 h-4 w-4" /> Bump
+                                <ArrowBigRightDash />
+                                Bump
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -618,7 +652,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
             <div className="min-w-0 space-y-3 text-sm">
               <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">Status</span>
-                <span className="min-w-0 break-words">{selectedCommand.status}</span>
+                <span className="min-w-0 break-words">{formatStatus(selectedCommand.status)}</span>
                 <span className="text-muted-foreground">Target</span>
                 <span className="min-w-0 break-words">{selectedCommand.targetVersion || "Latest"}</span>
                 <span className="text-muted-foreground">Created</span>
@@ -642,18 +676,60 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   );
 }
 
+function isNewer(a: string, b: string): boolean {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0,
+      y = pb[i] || 0;
+    if (x > y) return true;
+    if (x < y) return false;
+  }
+  return false;
+}
+
+function visibleCommand(cmd: LatestCommand | null, now: number): LatestCommand | null {
+  if (!cmd) return null;
+  if (INFLIGHT_STATUSES.has(cmd.status)) return cmd;
+  if (cmd.status !== "completed" && cmd.status !== "failed") return null;
+  const doneAt = Date.parse(cmd.completedAt || cmd.createdAt);
+  if (Number.isNaN(doneAt) || now - doneAt >= RECENT_COMMAND_MS) return null;
+  return cmd;
+}
+
+function versionStatus(installed: string, available: string, latestVersion: string | null) {
+  if (latestVersion && isNewer(latestVersion, available)) {
+    return { label: "Outdated", variant: "error" as const };
+  }
+  if (available !== installed) {
+    return { label: "Update Available", variant: "warn" as const };
+  }
+  return { label: "Up to Date", variant: "success" as const };
+}
+
 function labelForType(type: string) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function formatStatus(status: string) {
-  return status.replace(/_/g, " ");
+  switch (status) {
+    case "pending":
+    case "delivered":
+    case "in_progress":
+      return "In Progress";
+    case "completed":
+      return "Completed";
+    case "failed":
+      return "Failed";
+    default:
+      return status;
+  }
 }
 
 function statusIcon(status: string) {
   switch (status) {
     case "completed":
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CircleCheck className="h-4 w-4 text-green-500" />;
     case "failed":
       return <XCircle className="h-4 w-4 text-red-500" />;
     case "pending":
@@ -674,10 +750,4 @@ function commandResultMessage(cmd: LatestCommand): string {
   } catch {
     return cmd.result;
   }
-}
-
-function truncateMessage(message: string, maxLength: number): string {
-  if (!message) return "";
-  if (message.length <= maxLength) return message;
-  return `${message.slice(0, maxLength - 1)}…`;
 }

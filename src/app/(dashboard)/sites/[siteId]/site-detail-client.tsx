@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, CheckCircle, XCircle, Clock, Loader2, Trash2, ArrowUp } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, CircleCheck, XCircle, Clock, Loader2, Trash2, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
 
@@ -147,7 +147,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
   function statusIcon(status: string) {
     switch (status) {
       case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CircleCheck className="h-4 w-4 text-green-500" />;
       case "failed":
         return <XCircle className="h-4 w-4 text-red-500" />;
       case "pending":
@@ -157,6 +157,23 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       default:
         return null;
+    }
+  }
+
+  function formatStatus(status: string) {
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "delivered":
+        return "Delivered";
+      case "in_progress":
+        return "In Progress";
+      case "completed":
+        return "Completed";
+      case "failed":
+        return "Failed";
+      default:
+        return status;
     }
   }
 
@@ -371,7 +388,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                       <TableCell className="max-w-[280px] overflow-hidden whitespace-normal">
                         <div className="flex items-center gap-1.5">
                           {statusIcon(cmd.status)}
-                          <span className="text-sm">{cmd.status}</span>
+                          <span className="text-sm">{formatStatus(cmd.status)}</span>
                         </div>
                         {preview && (
                           <div className="text-xs text-muted-foreground mt-0.5 truncate" title="View full result">
@@ -402,7 +419,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
             <div className="min-w-0 space-y-3 text-sm">
               <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">Status</span>
-                <span className="min-w-0 break-words">{selectedCommand.status}</span>
+                <span className="min-w-0 break-words">{formatStatus(selectedCommand.status)}</span>
                 <span className="text-muted-foreground">Target</span>
                 <span className="min-w-0 break-words">{selectedCommand.targetVersion || "Latest"}</span>
                 <span className="text-muted-foreground">Created</span>

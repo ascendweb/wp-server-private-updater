@@ -28,7 +28,8 @@ export default async function PluginDetailPage({
 
   const latestBySite = await latestCommandsBySite(
     plugin.slug,
-    plugin.sitePlugins.map((sp) => sp.siteId)
+    plugin.sitePlugins.map((sp) => sp.siteId),
+    "update"
   );
 
   return (

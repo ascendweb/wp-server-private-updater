@@ -31,7 +31,8 @@ export async function GET(
 
   const latestBySite = await latestCommandsBySite(
     plugin.slug,
-    plugin.sitePlugins.map((sp) => sp.siteId)
+    plugin.sitePlugins.map((sp) => sp.siteId),
+    "update"
   );
 
   return NextResponse.json({
