@@ -20,42 +20,27 @@ export async function createCommand(
   });
 }
 
-function pingCandidateUrls(siteUrl: string, siteToken: string): string[] {
-  const base = siteUrl.replace(/\/+$/, "");
-  const token = encodeURIComponent(siteToken);
-  return [
-    `${base}/wp-json/wppu/v1/ping?token=${token}`,
-    `${base}/index.php?rest_route=/wppu/v1/ping&token=${token}`,
-    `${base}/?wppu_ping=1&token=${token}`,
-  ];
-}
-
 /**
- * Send a lightweight GET ping to the site to trigger it to poll for commands.
- * Prefers the REST route (usually excluded from page caches), then falls back
- * to the homepage query-arg ping for older plugin versions. The site verifies
- * the site token and calls back to fetch pending commands via POST /api/v1/commands/poll.
+ * Ping the site's REST endpoint so it polls for pending commands immediately.
+ * The site verifies the site token, then calls back via POST /api/v1/commands/poll.
+ * If the ping fails, the command stays pending for the site's next check-in.
  */
 async function pingSite(siteUrl: string, siteToken: string): Promise<boolean> {
-  for (const pingUrl of pingCandidateUrls(siteUrl, siteToken)) {
-    try {
-      const response = await fetch(pingUrl, {
-        method: "GET",
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(90_000),
-      });
-      if (response.ok) {
-        const contentType = response.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          return true;
-        }
-      }
-    } catch {
-      // Try the next candidate URL.
-    }
+  const base = siteUrl.replace(/\/+$/, "");
+  const pingUrl = `${base}/wp-json/wppu/v1/ping?token=${encodeURIComponent(siteToken)}`;
+
+  try {
+    const response = await fetch(pingUrl, {
+      method: "GET",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(90_000),
+    });
+    const contentType = response.headers.get("content-type") || "";
+    return response.ok && contentType.includes("application/json");
+  } catch {
+    return false;
   }
-  return false;
 }
 
 /**
