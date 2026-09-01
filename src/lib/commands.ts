@@ -20,22 +20,42 @@ export async function createCommand(
   });
 }
 
+function pingCandidateUrls(siteUrl: string, siteToken: string): string[] {
+  const base = siteUrl.replace(/\/+$/, "");
+  const token = encodeURIComponent(siteToken);
+  return [
+    `${base}/wp-json/wppu/v1/ping?token=${token}`,
+    `${base}/index.php?rest_route=/wppu/v1/ping&token=${token}`,
+    `${base}/?wppu_ping=1&token=${token}`,
+  ];
+}
+
 /**
  * Send a lightweight GET ping to the site to trigger it to poll for commands.
- * The ping carries no payload -- the site verifies the token and calls back
- * to fetch pending commands via POST /api/v1/commands/poll.
+ * Prefers the REST route (usually excluded from page caches), then falls back
+ * to the homepage query-arg ping for older plugin versions. The site verifies
+ * the site token and calls back to fetch pending commands via POST /api/v1/commands/poll.
  */
 async function pingSite(siteUrl: string, siteToken: string): Promise<boolean> {
-  try {
-    const pingUrl = `${siteUrl}/?wppu_ping=1&token=${encodeURIComponent(siteToken)}`;
-    const response = await fetch(pingUrl, {
-      method: "GET",
-      signal: AbortSignal.timeout(10_000),
-    });
-    return response.ok;
-  } catch {
-    return false;
+  for (const pingUrl of pingCandidateUrls(siteUrl, siteToken)) {
+    try {
+      const response = await fetch(pingUrl, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(90_000),
+      });
+      if (response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          return true;
+        }
+      }
+    } catch {
+      // Try the next candidate URL.
+    }
   }
+  return false;
 }
 
 /**
