@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
 
-type BulkCommandType = "update" | "activate" | "deactivate";
+type BulkCommandType = "update" | "activate" | "deactivate" | "refresh";
 
 interface PluginInfo {
   id: string;
@@ -121,12 +121,12 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
       try {
         const res = await fetch(`/api/v1/plugins/${plugin.id}/rollout`);
         if (res.ok) {
-          const data = (await res.json()) as { sites: SitePluginEntry[] };
+          const data = (await res.json()) as { inflight?: boolean; sites: SitePluginEntry[] };
           if (!cancelled && Array.isArray(data.sites)) {
             setRows(data.sites);
-            const inflight = data.sites.some(
-              (sp) => sp.latestCommand && INFLIGHT_STATUSES.has(sp.latestCommand.status)
-            );
+            const inflight =
+              data.inflight ||
+              data.sites.some((sp) => sp.latestCommand && INFLIGHT_STATUSES.has(sp.latestCommand.status));
             if (inflight) {
               timer = setTimeout(poll, 2000);
             }
@@ -304,6 +304,18 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     setRowBusy(null);
   }
 
+  async function handleRowRefresh(siteId: string) {
+    setRowBusy(`refresh-${siteId}`);
+    try {
+      await dispatchPluginCommands(plugin.id, [siteId], "refresh");
+      toast.success("Refresh command sent");
+      kickPoll();
+    } catch {
+      toast.error("Failed to send refresh");
+    }
+    setRowBusy(null);
+  }
+
   async function handleRowUpdate(siteId: string) {
     setRowBusy(`update-${siteId}`);
     try {
@@ -444,6 +456,10 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                       <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-48">
+                      <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkCommand("refresh")} disabled={actionsDisabled}>
+                        <RotateCw />
+                        Refresh inventory
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkAutoSync(true)} disabled={actionsDisabled}>
                         <RefreshCw />
                         Enable auto-sync
@@ -600,6 +616,14 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                               <DropdownMenuContent align="end" className="min-w-48">
                                 <DropdownMenuItem
                                   className="whitespace-nowrap"
+                                  onClick={() => handleRowRefresh(sp.siteId)}
+                                  disabled={rowBusy === `refresh-${sp.siteId}`}
+                                >
+                                  <RotateCw />
+                                  Refresh inventory
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
                                   onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
                                   disabled={rowBusy === `sync-${sp.siteId}`}
                                 >
@@ -745,6 +769,7 @@ function versionStatus(installed: string, available: string, latestVersion: stri
 }
 
 function labelForType(type: string) {
+  if (type === "refresh") return "Refresh";
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 

@@ -12,7 +12,7 @@ async function requireAuth() {
   if (!session?.user) throw new Error("Unauthorized");
 }
 
-const DISPATCH_TYPES = new Set<CommandType>(["update", "activate", "deactivate"]);
+const DISPATCH_TYPES = new Set<CommandType>(["update", "activate", "deactivate", "refresh"]);
 
 export async function dispatchPluginCommands(
   pluginId: string,

@@ -102,6 +102,7 @@ enum CommandType {
   rollback
   activate
   deactivate
+  refresh
 }
 
 enum CommandStatus {

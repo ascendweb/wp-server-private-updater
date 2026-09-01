@@ -29,13 +29,19 @@ export async function GET(
     return NextResponse.json({ error: "Plugin not found" }, { status: 404 });
   }
 
-  const latestBySite = await latestCommandsBySite(
-    plugin.slug,
-    plugin.sitePlugins.map((sp) => sp.siteId),
-    "update"
-  );
+  const siteIds = plugin.sitePlugins.map((sp) => sp.siteId);
+  const latestBySite = await latestCommandsBySite(plugin.slug, siteIds, "update");
+  const inflightCount = siteIds.length
+    ? await prisma.command.count({
+        where: {
+          siteId: { in: siteIds },
+          status: { in: ["pending", "delivered", "in_progress"] },
+        },
+      })
+    : 0;
 
   return NextResponse.json({
+    inflight: inflightCount > 0,
     sites: plugin.sitePlugins.map((sp) => ({
       id: sp.id,
       siteId: sp.site.id,
