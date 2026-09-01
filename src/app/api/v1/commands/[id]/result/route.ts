@@ -28,7 +28,7 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const { success, message, new_version } = body;
+  const { success, message, new_version, is_active } = body;
 
   const siteId = await resolveSiteId(body);
   if (!siteId) {
@@ -53,7 +53,12 @@ export async function POST(
     where: { id: command.id },
     data: {
       status: success ? "completed" : "failed",
-      result: JSON.stringify({ success, message, new_version }),
+      result: JSON.stringify({
+        success,
+        message,
+        new_version,
+        ...(typeof is_active === "boolean" ? { is_active } : {}),
+      }),
       completedAt: new Date(),
     },
   });
@@ -70,13 +75,19 @@ export async function POST(
         siteId,
         pluginSlug: command.pluginSlug,
         installedVersion: new_version,
-        isActive: true,
+        isActive: typeof is_active === "boolean" ? is_active : true,
         lastReportedAt: new Date(),
       },
       update: {
         installedVersion: new_version,
+        ...(typeof is_active === "boolean" ? { isActive: is_active } : {}),
         lastReportedAt: new Date(),
       },
+    });
+  } else if (success && typeof is_active === "boolean") {
+    await prisma.sitePlugin.updateMany({
+      where: { siteId, pluginSlug: command.pluginSlug },
+      data: { isActive: is_active, lastReportedAt: new Date() },
     });
   }
 

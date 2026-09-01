@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,12 +48,62 @@ interface SiteInfo {
   licenseCount: number;
 }
 
+const INFLIGHT_STATUSES = new Set(["pending", "delivered", "in_progress"]);
+
 export function SiteDetailClient({ site, sitePlugins, commands, availableToInstall }: { site: SiteInfo; sitePlugins: SitePlugin[]; commands: CommandEntry[]; availableToInstall: AvailablePlugin[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [bumpingId, setBumpingId] = useState<string | null>(null);
   const [selectedCommand, setSelectedCommand] = useState<CommandEntry | null>(null);
+  const [commandLog, setCommandLog] = useState(commands);
+  const [pollNonce, setPollNonce] = useState(0);
+
+  useEffect(() => {
+    setCommandLog(commands);
+  }, [commands]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    async function poll() {
+      try {
+        const res = await fetch(`/api/v1/sites/${site.id}/commands`);
+        if (res.ok) {
+          const data = (await res.json()) as { commands: CommandEntry[] };
+          if (!cancelled && Array.isArray(data.commands)) {
+            setCommandLog(data.commands);
+            const inflight = data.commands.some((cmd) => INFLIGHT_STATUSES.has(cmd.status));
+            timer = setTimeout(poll, inflight ? 2000 : 8000);
+            return;
+          }
+        }
+      } catch {}
+      if (!cancelled) {
+        timer = setTimeout(poll, 8000);
+      }
+    }
+
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [site.id, pollNonce]);
+
+  useEffect(() => {
+    if (!selectedCommand) return;
+    const next = commandLog.find((cmd) => cmd.id === selectedCommand.id);
+    if (
+      next &&
+      (next.status !== selectedCommand.status ||
+        next.result !== selectedCommand.result ||
+        next.completedAt !== selectedCommand.completedAt)
+    ) {
+      setSelectedCommand(next);
+    }
+  }, [commandLog, selectedCommand]);
 
   async function handleBump(sitePluginId: string, pluginSlug: string) {
     setBumpingId(sitePluginId);
@@ -72,6 +122,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
     setBusy(key);
     try {
       await sendCommand(site.id, type, pluginSlug, targetVersion || null);
+      setPollNonce((n) => n + 1);
       router.refresh();
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} command sent`);
     } catch {
@@ -287,7 +338,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
           <CardDescription>Recent commands sent to this site.</CardDescription>
         </CardHeader>
         <CardContent>
-          {commands.length === 0 ? (
+          {commandLog.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No commands sent yet.</p>
           ) : (
             <Table>
@@ -302,7 +353,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {commands.map((cmd) => {
+                {commandLog.map((cmd) => {
                   const resultMsg = commandResultMessage(cmd);
                   const preview = truncateMessage(resultMsg, 72);
 

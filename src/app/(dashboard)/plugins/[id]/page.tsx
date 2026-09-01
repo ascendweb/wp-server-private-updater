@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { latestCommandsBySite, serializeCommand } from "@/lib/commands";
 import { SetPageHeader } from "@/components/set-page-header";
 import { PluginDetailClient } from "./plugin-detail-client";
 
@@ -24,6 +25,11 @@ export default async function PluginDetailPage({
   });
 
   if (!plugin) notFound();
+
+  const latestBySite = await latestCommandsBySite(
+    plugin.slug,
+    plugin.sitePlugins.map((sp) => sp.siteId)
+  );
 
   return (
     <div className="space-y-6">
@@ -54,6 +60,9 @@ export default async function PluginDetailPage({
           availableVersion: sp.availableVersion ?? sp.installedVersion ?? null,
           autoSync: sp.autoSync,
           isActive: sp.isActive,
+          latestCommand: latestBySite.has(sp.siteId)
+            ? serializeCommand(latestBySite.get(sp.siteId)!)
+            : null,
         }))}
       />
     </div>

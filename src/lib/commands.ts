@@ -1,6 +1,40 @@
 import { prisma } from "./db";
 import type { CommandType, Command } from "@prisma/client";
 
+export function serializeCommand(command: Command) {
+  return {
+    id: command.id,
+    siteId: command.siteId,
+    type: command.type,
+    pluginSlug: command.pluginSlug,
+    targetVersion: command.targetVersion,
+    status: command.status,
+    result: command.result,
+    createdAt: command.createdAt.toISOString(),
+    completedAt: command.completedAt?.toISOString() ?? null,
+  };
+}
+
+export async function latestCommandsBySite(pluginSlug: string, siteIds: string[]) {
+  if (siteIds.length === 0) {
+    return new Map<string, Command>();
+  }
+
+  const commands = await prisma.command.findMany({
+    where: { pluginSlug, siteId: { in: siteIds } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const latestBySite = new Map<string, Command>();
+  for (const command of commands) {
+    if (!latestBySite.has(command.siteId)) {
+      latestBySite.set(command.siteId, command);
+    }
+  }
+
+  return latestBySite;
+}
+
 export async function createCommand(
   siteId: string,
   type: CommandType,
