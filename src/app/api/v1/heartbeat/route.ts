@@ -12,10 +12,11 @@ interface HeartbeatPlugin {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { license_key, site_url, plugins } = body as {
+  const { license_key, site_url, plugins, partial } = body as {
     license_key: string;
     site_url: string;
     plugins: HeartbeatPlugin[];
+    partial?: boolean;
   };
 
   if (!license_key || !site_url || !Array.isArray(plugins)) {
@@ -72,8 +73,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Remove plugins no longer present on the site
-  if (reportedSlugs.length > 0) {
+  // Full inventory only: drop unlocked plugins that were not reported.
+  if (!partial && reportedSlugs.length > 0) {
     await prisma.sitePlugin.deleteMany({
       where: {
         siteId: site.id,
