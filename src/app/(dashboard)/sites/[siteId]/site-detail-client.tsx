@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RefreshCw, Download, MoreHorizontal, History, CheckCircle, XCircle, Clock, Loader2, Trash2, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
@@ -52,6 +53,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
   const [busy, setBusy] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [bumpingId, setBumpingId] = useState<string | null>(null);
+  const [selectedCommand, setSelectedCommand] = useState<CommandEntry | null>(null);
 
   async function handleBump(sitePluginId: string, pluginSlug: string) {
     setBumpingId(sitePluginId);
@@ -301,29 +303,30 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
               </TableHeader>
               <TableBody>
                 {commands.map((cmd) => {
-                  let resultMsg = "";
-                  if (cmd.result) {
-                    try {
-                      const r = JSON.parse(cmd.result);
-                      resultMsg = r.message || "";
-                    } catch {
-                      resultMsg = cmd.result;
-                    }
-                  }
+                  const resultMsg = commandResultMessage(cmd);
+                  const preview = truncateMessage(resultMsg, 72);
 
                   return (
-                    <TableRow key={cmd.id}>
+                    <TableRow
+                      key={cmd.id}
+                      className={resultMsg ? "cursor-pointer" : undefined}
+                      onClick={() => resultMsg && setSelectedCommand(cmd)}
+                    >
                       <TableCell>
                         <Badge variant="outline">{cmd.type}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">{cmd.pluginSlug}</TableCell>
                       <TableCell>{cmd.targetVersion || "Latest"}</TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[280px] overflow-hidden whitespace-normal">
                         <div className="flex items-center gap-1.5">
                           {statusIcon(cmd.status)}
                           <span className="text-sm">{cmd.status}</span>
                         </div>
-                        {resultMsg && <div className="text-xs text-muted-foreground mt-0.5">{resultMsg}</div>}
+                        {preview && (
+                          <div className="text-xs text-muted-foreground mt-0.5 truncate" title="View full result">
+                            {preview}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(cmd.createdAt).toLocaleString()}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{cmd.completedAt ? new Date(cmd.completedAt).toLocaleString() : "\u2014"}</TableCell>
@@ -335,6 +338,37 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!selectedCommand} onOpenChange={(open) => !open && setSelectedCommand(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Command details</DialogTitle>
+            <DialogDescription>
+              {selectedCommand ? `${selectedCommand.type} ${selectedCommand.pluginSlug}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedCommand && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                <span className="text-muted-foreground">Status</span>
+                <span>{selectedCommand.status}</span>
+                <span className="text-muted-foreground">Target</span>
+                <span>{selectedCommand.targetVersion || "Latest"}</span>
+                <span className="text-muted-foreground">Created</span>
+                <span>{new Date(selectedCommand.createdAt).toLocaleString()}</span>
+                <span className="text-muted-foreground">Completed</span>
+                <span>{selectedCommand.completedAt ? new Date(selectedCommand.completedAt).toLocaleString() : "\u2014"}</span>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">Result</div>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs">
+                  {commandResultMessage(selectedCommand) || "No result reported."}
+                </pre>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card className="border-destructive">
         <CardHeader>
@@ -350,4 +384,20 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
       </Card>
     </>
   );
+}
+
+function commandResultMessage(cmd: CommandEntry): string {
+  if (!cmd.result) return "";
+  try {
+    const parsed = JSON.parse(cmd.result) as { message?: string };
+    return parsed.message || "";
+  } catch {
+    return cmd.result;
+  }
+}
+
+function truncateMessage(message: string, maxLength: number): string {
+  if (!message) return "";
+  if (message.length <= maxLength) return message;
+  return `${message.slice(0, maxLength - 1)}…`;
 }
