@@ -343,25 +343,25 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Command details</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               {selectedCommand ? `${selectedCommand.type} ${selectedCommand.pluginSlug}` : ""}
             </DialogDescription>
           </DialogHeader>
           {selectedCommand && (
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <div className="min-w-0 space-y-3 text-sm">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">Status</span>
-                <span>{selectedCommand.status}</span>
+                <span className="min-w-0 break-words">{selectedCommand.status}</span>
                 <span className="text-muted-foreground">Target</span>
-                <span>{selectedCommand.targetVersion || "Latest"}</span>
+                <span className="min-w-0 break-words">{selectedCommand.targetVersion || "Latest"}</span>
                 <span className="text-muted-foreground">Created</span>
-                <span>{new Date(selectedCommand.createdAt).toLocaleString()}</span>
+                <span className="min-w-0 break-words">{new Date(selectedCommand.createdAt).toLocaleString()}</span>
                 <span className="text-muted-foreground">Completed</span>
-                <span>{selectedCommand.completedAt ? new Date(selectedCommand.completedAt).toLocaleString() : "\u2014"}</span>
+                <span className="min-w-0 break-words">{selectedCommand.completedAt ? new Date(selectedCommand.completedAt).toLocaleString() : "\u2014"}</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-muted-foreground mb-1">Result</div>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs">
+                <pre className="max-h-64 max-w-full min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs">
                   {commandResultMessage(selectedCommand) || "No result reported."}
                 </pre>
               </div>
