@@ -21,6 +21,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
 
 type BulkCommandType = "update" | "activate" | "deactivate";
@@ -75,7 +76,6 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   const [selectedCommand, setSelectedCommand] = useState<LatestCommand | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const lastClickedIndex = useRef<number | null>(null);
-  const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setRows(sitePlugins);
@@ -94,18 +94,11 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
           const data = await res.json();
           setLatestVersion(data.version || null);
         }
-      } catch {}
+      } catch { }
       setLoadingVersion(false);
     }
     load();
   }, [plugin.slug]);
-
-  useEffect(() => {
-    const el = headerCheckboxRef.current;
-    if (el) {
-      el.indeterminate = selected.size > 0 && selected.size < rows.length;
-    }
-  }, [selected, rows.length]);
 
   useEffect(() => {
     if (!selectedCommand) return;
@@ -197,21 +190,25 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     });
   }
 
-  function handleCheckboxMouseDown(event: React.MouseEvent, index: number) {
-    if (event.shiftKey && lastClickedIndex.current != null) {
-      event.preventDefault();
-      selectIndexRange(lastClickedIndex.current, index);
-      lastClickedIndex.current = index;
-    }
-  }
-
-  function handleCheckboxChange(event: React.ChangeEvent<HTMLInputElement>, index: number, siteId: string) {
+  function handleCheckboxToggle(index: number, siteId: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (event.target.checked) next.add(siteId);
-      else next.delete(siteId);
+      if (next.has(siteId)) next.delete(siteId);
+      else next.add(siteId);
       return next;
     });
+    lastClickedIndex.current = index;
+  }
+
+  function handleCheckboxShift(index: number) {
+    if (lastClickedIndex.current != null) {
+      selectIndexRange(lastClickedIndex.current, index);
+    } else {
+      const siteId = rows[index]?.siteId;
+      if (siteId) {
+        setSelected(new Set([siteId]));
+      }
+    }
     lastClickedIndex.current = index;
   }
 
@@ -372,13 +369,13 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
               <div className="text-3xl font-bold">{loadingVersion ? "..." : latestVersion ? `v${latestVersion}` : "N/A"}</div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="subtle"
                 size="icon"
-                className="h-6 w-6"
+                className="size-10 ms-auto"
                 onClick={refreshLatestVersion}
                 disabled={refreshingVersion || loadingVersion}
               >
-                <RotateCw className={`h-3.5 w-3.5 ${refreshingVersion ? "animate-spin" : ""}`} />
+                <RotateCw className={`h-5 w-5 ${refreshingVersion ? "animate-spin" : ""}`} strokeWidth={2.75} absoluteStrokeWidth />
               </Button>
             </div>
           </CardContent>
@@ -462,176 +459,176 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
 
               <div className="select-none">
                 <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className={`w-10 ${CELL_PAD}`}>
-                      <SelectCheckbox
-                        inputRef={headerCheckboxRef}
-                        checked={allSelected}
-                        onChange={toggleSelectAll}
-                        aria-label="Select all sites"
-                      />
-                    </TableHead>
-                    <TableHead className={`w-full ${CELL_PAD}`}>Site</TableHead>
-                    <TableHead className={CELL_PAD}>Active</TableHead>
-                    <TableHead className={CELL_PAD}>Auto-Sync</TableHead>
-                    <TableHead className={CELL_PAD}>Installed</TableHead>
-                    <TableHead className={CELL_PAD}>Available</TableHead>
-                    <TableHead className={CELL_PAD}>Status</TableHead>
-                    <TableHead className={CELL_PAD}>Command</TableHead>
-                    <TableHead className={`w-12 ${CELL_PAD}`} />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((sp, index) => {
-                    const avail = sp.availableVersion || sp.installedVersion;
-                    const bumpable = canBump(sp);
-                    const cmd = visibleCommand(sp.latestCommand, now);
-                    const isRowSelected = selected.has(sp.siteId);
-                    const rollout = versionStatus(sp.installedVersion, avail, latestVersion);
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className={`w-10 ${CELL_PAD}`}>
+                        <SelectCheckbox
+                          checked={allSelected}
+                          indeterminate={selected.size > 0 && !allSelected}
+                          onToggle={toggleSelectAll}
+                          aria-label="Select all sites"
+                        />
+                      </TableHead>
+                      <TableHead className={`w-full ${CELL_PAD}`}>Site</TableHead>
+                      <TableHead className={CELL_PAD}>Active</TableHead>
+                      <TableHead className={CELL_PAD}>Auto-Sync</TableHead>
+                      <TableHead className={CELL_PAD}>Installed</TableHead>
+                      <TableHead className={CELL_PAD}>Available</TableHead>
+                      <TableHead className={CELL_PAD}>Status</TableHead>
+                      <TableHead className={CELL_PAD}>Command</TableHead>
+                      <TableHead className={`w-12 ${CELL_PAD}`} />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((sp, index) => {
+                      const avail = sp.availableVersion || sp.installedVersion;
+                      const bumpable = canBump(sp);
+                      const cmd = visibleCommand(sp.latestCommand, now);
+                      const isRowSelected = selected.has(sp.siteId);
+                      const rollout = versionStatus(sp.installedVersion, avail, latestVersion);
 
-                    return (
-                      <TableRow
-                        key={sp.id}
-                        className="h-12 has-[:checked]:bg-muted"
-                        data-state={isRowSelected ? "selected" : undefined}
-                        onClick={(event) => handleRowClick(event, index, sp.siteId)}
-                      >
-                        <TableCell className={CELL_PAD}>
-                          <SelectCheckbox
-                            checked={isRowSelected}
-                            onMouseDown={(event) => handleCheckboxMouseDown(event, index)}
-                            onChange={(event) => handleCheckboxChange(event, index, sp.siteId)}
-                            aria-label={`Select ${sp.siteUrl}`}
-                          />
-                        </TableCell>
-                        <TableCell className={`w-full ${CELL_PAD}`}>
-                          <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
-                            {sp.siteUrl}
-                          </Link>
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          <span className="text-sm">{sp.isActive ? "Active" : "Inactive"}</span>
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          <span className="text-sm">{sp.autoSync ? "On" : "Off"}</span>
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          <span className="text-sm">v{sp.installedVersion}</span>
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          <div className="flex items-center gap-2">
-                            {sp.autoSync ? (
-                              <span className="text-sm">v{avail}</span>
-                            ) : editingId !== sp.id ? (
-                              <button
-                                className="text-sm text-left cursor-pointer hover:underline"
-                                onClick={() => {
-                                  setEditingId(sp.id);
-                                  setTimeout(() => {
-                                    const input = inputRefs.current.get(sp.id);
-                                    if (input) {
-                                      input.focus();
-                                      input.select();
+                      return (
+                        <TableRow
+                          key={sp.id}
+                          className="h-12"
+                          data-state={isRowSelected ? "selected" : undefined}
+                          onClick={(event) => handleRowClick(event, index, sp.siteId)}
+                        >
+                          <TableCell className={CELL_PAD}>
+                            <SelectCheckbox
+                              checked={isRowSelected}
+                              onToggle={() => handleCheckboxToggle(index, sp.siteId)}
+                              onShiftClick={() => handleCheckboxShift(index)}
+                              aria-label={`Select ${sp.siteUrl}`}
+                            />
+                          </TableCell>
+                          <TableCell className={`w-full ${CELL_PAD}`}>
+                            <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
+                              {sp.siteUrl}
+                            </Link>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            <span className="text-sm">{sp.isActive ? "Active" : "Inactive"}</span>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            <span className="text-sm">{sp.autoSync ? "On" : "Off"}</span>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            <span className="text-sm">v{sp.installedVersion}</span>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            <div className="flex items-center gap-2">
+                              {sp.autoSync ? (
+                                <span className="text-sm">v{avail}</span>
+                              ) : editingId !== sp.id ? (
+                                <button
+                                  className="text-sm text-left cursor-pointer hover:underline"
+                                  onClick={() => {
+                                    setEditingId(sp.id);
+                                    setTimeout(() => {
+                                      const input = inputRefs.current.get(sp.id);
+                                      if (input) {
+                                        input.focus();
+                                        input.select();
+                                      }
+                                    }, 0);
+                                  }}
+                                >
+                                  v{avail}
+                                </button>
+                              ) : (
+                                <input
+                                  ref={(el) => {
+                                    if (el) inputRefs.current.set(sp.id, el);
+                                  }}
+                                  defaultValue={avail}
+                                  className="rounded border border-border bg-transparent px-1.5 py-0.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+                                  style={{ fieldSizing: "content", minWidth: "5ch" } as React.CSSProperties}
+                                  onBlur={(e) => {
+                                    const val = e.target.value.trim();
+                                    if (val && val !== avail) {
+                                      saveVersion(sp.id, val);
+                                    } else {
+                                      setEditingId(null);
                                     }
-                                  }, 0);
-                                }}
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.currentTarget.blur();
+                                    } else if (e.key === "Escape") {
+                                      setEditingId(null);
+                                    }
+                                  }}
+                                />
+                              )}
+                              {bumpable && editingId !== sp.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Bump To Latest"
+                                  className="group h-6 px-2 text-xs bg-muted/30"
+                                  onClick={() => handleRowBump(sp.siteId)}
+                                  disabled={rowBusy === `bump-${sp.siteId}`}
+                                >
+                                  <ArrowBigRightDash className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            <Badge variant={rollout.variant}>{rollout.label}</Badge>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            {cmd ? (
+                              <button
+                                type="button"
+                                className="flex items-center gap-1.5 cursor-pointer"
+                                onClick={() => setSelectedCommand(cmd)}
                               >
-                                v{avail}
+                                {statusIcon(cmd.status)}
+                                <span className="text-sm">{formatStatus(cmd.status)}</span>
                               </button>
                             ) : (
-                              <input
-                                ref={(el) => {
-                                  if (el) inputRefs.current.set(sp.id, el);
-                                }}
-                                defaultValue={avail}
-                                className="rounded border border-border bg-transparent px-1.5 py-0.5 text-sm outline-none focus:ring-1 focus:ring-ring"
-                                style={{ fieldSizing: "content", minWidth: "5ch" } as React.CSSProperties}
-                                onBlur={(e) => {
-                                  const val = e.target.value.trim();
-                                  if (val && val !== avail) {
-                                    saveVersion(sp.id, val);
-                                  } else {
-                                    setEditingId(null);
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.currentTarget.blur();
-                                  } else if (e.key === "Escape") {
-                                    setEditingId(null);
-                                  }
-                                }}
-                              />
+                              <span className="text-sm text-muted-foreground">{"\u2014"}</span>
                             )}
-                            {bumpable && editingId !== sp.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="Bump To Latest"
-                                className="group h-6 px-2 text-xs bg-muted/30"
-                                onClick={() => handleRowBump(sp.siteId)}
-                                disabled={rowBusy === `bump-${sp.siteId}`}
-                              >
-                                <ArrowBigRightDash className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          <Badge variant={rollout.variant}>{rollout.label}</Badge>
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          {cmd ? (
-                            <button
-                              type="button"
-                              className="flex items-center gap-1.5 cursor-pointer"
-                              onClick={() => setSelectedCommand(cmd)}
-                            >
-                              {statusIcon(cmd.status)}
-                              <span className="text-sm">{formatStatus(cmd.status)}</span>
-                            </button>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">{"\u2014"}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className={CELL_PAD}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="min-w-48">
-                              <DropdownMenuItem
-                                className="whitespace-nowrap"
-                                onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
-                                disabled={rowBusy === `sync-${sp.siteId}`}
-                              >
-                                <RefreshCw />
-                                {sp.autoSync ? "Disable auto-sync" : "Enable auto-sync"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="whitespace-nowrap"
-                                onClick={() => handleRowUpdate(sp.siteId)}
-                                disabled={rowBusy === `update-${sp.siteId}`}
-                              >
-                                <CircleFadingArrowUp />
-                                Update
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="whitespace-nowrap"
-                                onClick={() => handleRowBump(sp.siteId)}
-                                disabled={rowBusy === `bump-${sp.siteId}` || sp.autoSync}
-                              >
-                                <ArrowBigRightDash />
-                                Bump
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
+                          </TableCell>
+                          <TableCell className={CELL_PAD}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="min-w-48">
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
+                                  onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
+                                  disabled={rowBusy === `sync-${sp.siteId}`}
+                                >
+                                  <RefreshCw />
+                                  {sp.autoSync ? "Disable auto-sync" : "Enable auto-sync"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
+                                  onClick={() => handleRowUpdate(sp.siteId)}
+                                  disabled={rowBusy === `update-${sp.siteId}`}
+                                >
+                                  <CircleFadingArrowUp />
+                                  Update
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
+                                  onClick={() => handleRowBump(sp.siteId)}
+                                  disabled={rowBusy === `bump-${sp.siteId}` || sp.autoSync}
+                                >
+                                  <ArrowBigRightDash />
+                                  Bump
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
                 </Table>
               </div>
             </>
@@ -677,37 +674,42 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
 
 function SelectCheckbox({
   checked,
-  onChange,
-  onMouseDown,
-  inputRef,
+  indeterminate = false,
+  onToggle,
+  onShiftClick,
   "aria-label": ariaLabel,
 }: {
   checked: boolean;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onMouseDown?: (event: React.MouseEvent<HTMLLabelElement>) => void;
-  inputRef?: React.Ref<HTMLInputElement>;
+  indeterminate?: boolean;
+  onToggle: () => void;
+  onShiftClick?: () => void;
   "aria-label": string;
 }) {
   return (
-    <label
-      className="group relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-input bg-background has-[:checked]:border-primary has-[:checked]:bg-primary has-[:indeterminate]:border-primary has-[:indeterminate]:bg-primary"
-      onMouseDown={onMouseDown}
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? "mixed" : checked}
+      aria-label={ariaLabel}
+      className={cn(
+        "inline-flex size-5 shrink-0 items-center justify-center rounded-sm border border-input bg-background text-primary-foreground outline-none",
+        "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        (checked || indeterminate) && "border-primary bg-primary"
+      )}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.shiftKey && onShiftClick) {
+          onShiftClick();
+          return;
+        }
+        onToggle();
+      }}
     >
-      <input
-        ref={inputRef}
-        type="checkbox"
-        className="sr-only"
-        checked={checked}
-        onChange={onChange}
-        aria-label={ariaLabel}
-      />
-      <Check
-        className="text-primary-foreground opacity-0 group-has-[:checked]:opacity-100 group-has-[:indeterminate]:opacity-100"
-        size={16}
-        strokeWidth={3}
-        absoluteStrokeWidth
-      />
-    </label>
+      {(checked || indeterminate) && (
+        <Check size={16} strokeWidth={3} absoluteStrokeWidth />
+      )}
+    </button>
   );
 }
 
