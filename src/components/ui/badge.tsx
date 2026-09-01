@@ -16,7 +16,7 @@ const badgeVariants = cva("group/badge inline-flex w-fit shrink-0 items-center j
       success: "border-green-100 bg-green-100 text-green-800 dark:border-green-950 dark:bg-green-950 dark:text-green-400",
       error: "border-red-100 bg-red-100 text-red-800 dark:border-red-950 dark:bg-red-950 dark:text-red-400",
       warn: "border-orange-100 bg-orange-100 text-orange-800 dark:border-orange-950 dark:bg-orange-950 dark:text-orange-400",
-      subtle: "border-taupe-200 bg-taupe-200 text-taupe-600 dark:border-taupe-900 dark:bg-taupe-900 dark:text-taupe-400",
+      subtle: "border-muted bg-muted text-muted-foreground dark:border-muted dark:bg-muted dark:text-muted-foreground",
     },
   },
   defaultVariants: {
