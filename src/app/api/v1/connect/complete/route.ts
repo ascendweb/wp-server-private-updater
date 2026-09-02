@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { jwtVerify, SignJWT } from "jose";
 import { prisma } from "@/lib/db";
-import { normalizeSiteUrl } from "@/lib/license";
+import { ensureSite, normalizeSiteUrl } from "@/lib/license";
 
 const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || "secret");
 
@@ -34,16 +34,10 @@ export async function POST(req: NextRequest) {
   const normalizedUrl = normalizeSiteUrl(payload.site_url);
   const siteToken = crypto.randomUUID();
 
-  const site = await prisma.site.upsert({
-    where: { url: normalizedUrl },
-    create: {
-      url: normalizedUrl,
-      label: normalizedUrl,
-      siteToken,
-    },
-    update: {
-      siteToken,
-    },
+  const site = await ensureSite(payload.site_url);
+  await prisma.site.update({
+    where: { id: site.id },
+    data: { siteToken },
   });
 
   const license = await prisma.license.create({

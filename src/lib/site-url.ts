@@ -22,6 +22,20 @@ function stripWww(host: string): string {
   return host.replace(/^www\./i, "");
 }
 
+/**
+ * License/site identity: host without www, lowercased.
+ * Ignores http vs https. Other subdomains stay distinct.
+ */
+export function canonicalSiteHost(url: string): string {
+  return stripWww(extractHost(url)).toLowerCase();
+}
+
+export function siteUrlsMatch(a: string, b: string): boolean {
+  const left = canonicalSiteHost(a);
+  const right = canonicalSiteHost(b);
+  return Boolean(left) && left === right;
+}
+
 export function formatSiteHost(url: string): string {
   return stripWww(extractHost(url));
 }
