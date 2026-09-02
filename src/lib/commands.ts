@@ -101,7 +101,8 @@ export type PingResult = {
 
 async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult> {
   const base = siteUrl.replace(/\/+$/, "");
-  const pingUrl = `${base}/wp-json/wppu/v1/ping?token=${encodeURIComponent(siteToken)}`;
+  // Unique query string so CDNs cannot reuse a previous GET /wp-json/ ping.
+  const pingUrl = `${base}/wp-json/wppu/v1/ping?token=${encodeURIComponent(siteToken)}&n=${Date.now()}`;
 
   try {
     const response = await fetch(pingUrl, {
