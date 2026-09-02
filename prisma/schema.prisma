@@ -119,7 +119,7 @@ model Command {
   siteId        String
   site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   type          CommandType
-  pluginSlug    String
+  pluginSlug    String?
   targetVersion String?
   packageUrl    String?
   status        CommandStatus @default(pending)

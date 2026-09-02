@@ -8,10 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, CircleCheck, XCircle, Clock, Loader2, Trash2, ArrowUp, RotateCw, Eraser } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, Trash2, ArrowUp, RotateCw, Eraser } from "lucide-react";
 import { toast } from "sonner";
+import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
 import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
 import { sendSiteCommand } from "../actions";
+import { formatSiteHost } from "@/lib/site-url";
 
 interface SitePlugin {
   id: string;
@@ -28,7 +30,7 @@ interface SitePlugin {
 interface CommandEntry {
   id: string;
   type: string;
-  pluginSlug: string;
+  pluginSlug: string | null;
   targetVersion: string | null;
   status: string;
   result: string | null;
@@ -146,7 +148,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
   }
 
   async function handleDeleteSite() {
-    if (!confirm(`Delete site "${site.url}" and all its licenses and data? This cannot be undone.`)) return;
+    if (!confirm(`Delete site "${formatSiteHost(site.url)}" and all its licenses and data? This cannot be undone.`)) return;
     setDeleting(true);
     try {
       await deleteSite(site.id);
@@ -155,39 +157,6 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
     } catch {
       toast.error("Failed to delete site");
       setDeleting(false);
-    }
-  }
-
-  function statusIcon(status: string) {
-    switch (status) {
-      case "completed":
-        return <CircleCheck className="h-4 w-4 text-green-500" />;
-      case "failed":
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case "pending":
-      case "delivered":
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "in_progress":
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-      default:
-        return null;
-    }
-  }
-
-  function formatStatus(status: string) {
-    switch (status) {
-      case "pending":
-        return "Pending";
-      case "delivered":
-        return "Delivered";
-      case "in_progress":
-        return "In Progress";
-      case "completed":
-        return "Completed";
-      case "failed":
-        return "Failed";
-      default:
-        return status;
     }
   }
 
@@ -412,8 +381,8 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                       <TableCell>{cmd.targetVersion || (cmd.type === "refresh" || cmd.type === "purge_cache" ? "\u2014" : "Latest")}</TableCell>
                       <TableCell className="max-w-[280px] overflow-hidden whitespace-normal">
                         <div className="flex items-center gap-1.5">
-                          {statusIcon(cmd.status)}
-                          <span className="text-sm">{formatStatus(cmd.status)}</span>
+                          <CommandStatusIcon status={cmd.status} />
+                          <span className="text-sm">{formatCommandStatus(cmd.status)}</span>
                         </div>
                         {preview && (
                           <div className="text-xs text-muted-foreground mt-0.5 truncate" title="View full result">
@@ -444,7 +413,14 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
             <div className="min-w-0 space-y-3 text-sm">
               <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">Status</span>
-                <span className="min-w-0 break-words">{formatStatus(selectedCommand.status)}</span>
+                <span className="min-w-0 break-words">
+                  {formatCommandStatus(selectedCommand.status)}
+                  {commandStatusHint(selectedCommand.status) ? (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {commandStatusHint(selectedCommand.status)}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="text-muted-foreground">Target</span>
                 <span className="min-w-0 break-words">{selectedCommand.targetVersion || (selectedCommand.type === "refresh" || selectedCommand.type === "purge_cache" ? "\u2014" : "Latest")}</span>
                 <span className="text-muted-foreground">Created</span>

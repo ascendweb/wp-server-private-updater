@@ -11,10 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   RotateCw,
   MoreHorizontal,
-  CircleCheck,
-  XCircle,
-  Clock,
-  Loader2,
   RefreshCw,
   ArrowBigRightDash,
   CircleFadingArrowUp,
@@ -23,6 +19,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatSiteHost, sortBySiteUrl } from "@/lib/site-url";
+import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
 
 type BulkCommandType = "update" | "activate" | "deactivate" | "refresh" | "purge_cache";
@@ -39,7 +37,7 @@ export interface LatestCommand {
   id: string;
   siteId?: string;
   type: string;
-  pluginSlug: string;
+  pluginSlug: string | null;
   targetVersion: string | null;
   status: string;
   result: string | null;
@@ -79,7 +77,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   const lastClickedIndex = useRef<number | null>(null);
 
   useEffect(() => {
-    setRows(sitePlugins);
+    setRows(sortBySiteUrl(sitePlugins, (sp) => sp.siteUrl));
   }, [sitePlugins]);
 
   useEffect(() => {
@@ -124,7 +122,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
         if (res.ok) {
           const data = (await res.json()) as { inflight?: boolean; sites: SitePluginEntry[] };
           if (!cancelled && Array.isArray(data.sites)) {
-            setRows(data.sites);
+            setRows(sortBySiteUrl(data.sites, (sp) => sp.siteUrl));
             const inflight =
               data.inflight ||
               data.sites.some((sp) => sp.latestCommand && INFLIGHT_STATUSES.has(sp.latestCommand.status));
@@ -532,12 +530,12 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                               checked={isRowSelected}
                               onToggle={() => handleCheckboxToggle(index, sp.siteId)}
                               onShiftClick={() => handleCheckboxShift(index)}
-                              aria-label={`Select ${sp.siteUrl}`}
+                              aria-label={`Select ${formatSiteHost(sp.siteUrl)}`}
                             />
                           </TableCell>
                           <TableCell className={`w-full ${CELL_PAD}`}>
                             <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
-                              {sp.siteUrl}
+                              {formatSiteHost(sp.siteUrl)}
                             </Link>
                           </TableCell>
                           <TableCell className={CELL_PAD}>
@@ -618,8 +616,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                 className="flex items-center gap-1.5 cursor-pointer"
                                 onClick={() => setSelectedCommand(cmd)}
                               >
-                                {statusIcon(cmd.status)}
-                                <span className="text-sm">{formatStatus(cmd.status)}</span>
+                                <CommandStatusIcon status={cmd.status} />
+                                <span className="text-sm">{formatCommandStatus(cmd.status)}</span>
                               </button>
                             ) : (
                               <span className="text-sm text-muted-foreground">{"\u2014"}</span>
@@ -697,7 +695,14 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
             <div className="min-w-0 space-y-3 text-sm">
               <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">Status</span>
-                <span className="min-w-0 break-words">{formatStatus(selectedCommand.status)}</span>
+                <span className="min-w-0 break-words">
+                  {formatCommandStatus(selectedCommand.status)}
+                  {commandStatusHint(selectedCommand.status) ? (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {commandStatusHint(selectedCommand.status)}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="text-muted-foreground">Target</span>
                 <span className="min-w-0 break-words">{selectedCommand.targetVersion || "Latest"}</span>
                 <span className="text-muted-foreground">Created</span>
@@ -797,37 +802,6 @@ function labelForType(type: string) {
   if (type === "refresh") return "Refresh inventory";
   if (type === "purge_cache") return "Purge caches";
   return type.charAt(0).toUpperCase() + type.slice(1);
-}
-
-function formatStatus(status: string) {
-  switch (status) {
-    case "pending":
-    case "delivered":
-    case "in_progress":
-      return "In Progress";
-    case "completed":
-      return "Completed";
-    case "failed":
-      return "Failed";
-    default:
-      return status;
-  }
-}
-
-function statusIcon(status: string) {
-  switch (status) {
-    case "completed":
-      return <CircleCheck className="h-4 w-4 text-green-500" />;
-    case "failed":
-      return <XCircle className="h-4 w-4 text-red-500" />;
-    case "pending":
-    case "delivered":
-      return <Clock className="h-4 w-4 text-yellow-500" />;
-    case "in_progress":
-      return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-    default:
-      return null;
-  }
 }
 
 function commandResultMessage(cmd: LatestCommand): string {

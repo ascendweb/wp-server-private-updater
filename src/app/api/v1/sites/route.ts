@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sortBySiteUrl } from "@/lib/site-url";
 
 export async function GET() {
   const session = await auth();
@@ -23,21 +24,24 @@ export async function GET() {
         select: { lastCheckAt: true },
       },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { url: "asc" },
   });
 
-  const result = sites.map((site) => ({
-    id: site.id,
-    url: site.url,
-    label: site.label,
-    siteToken: site.siteToken,
-    pluginNames: site.plugins
-      .map((sp) => sp.plugin?.name || sp.pluginName || sp.pluginSlug)
-      .filter(Boolean),
-    licenseCount: site._count.licenses,
-    pluginCount: site._count.plugins,
-    lastCheckAt: site.licenses[0]?.lastCheckAt?.toISOString() ?? null,
-  }));
+  const result = sortBySiteUrl(
+    sites.map((site) => ({
+      id: site.id,
+      url: site.url,
+      label: site.label,
+      siteToken: site.siteToken,
+      pluginNames: site.plugins
+        .map((sp) => sp.plugin?.name || sp.pluginName || sp.pluginSlug)
+        .filter(Boolean),
+      licenseCount: site._count.licenses,
+      pluginCount: site._count.plugins,
+      lastCheckAt: site.licenses[0]?.lastCheckAt?.toISOString() ?? null,
+    })),
+    (site) => site.url
+  );
 
   return NextResponse.json(result);
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { SetPageHeader } from "@/components/set-page-header";
 import { SiteDetailClient } from "./site-detail-client";
+import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 
 export default async function SiteDetailPage({
   params,
@@ -40,12 +41,12 @@ export default async function SiteDetailPage({
 
   return (
     <div className="space-y-6">
-      <SetPageHeader title={site.label || site.url} />
+      <SetPageHeader title={formatSiteTitle(site.url, site.label)} />
       <div>
         <Link href="/sites" className="text-sm text-muted-foreground hover:underline">
           &larr; Back to Sites
         </Link>
-        <p className="text-muted-foreground mt-1">{site.url}</p>
+        <p className="text-muted-foreground mt-1">{formatSiteHost(site.url)}</p>
       </div>
 
       <SiteDetailClient

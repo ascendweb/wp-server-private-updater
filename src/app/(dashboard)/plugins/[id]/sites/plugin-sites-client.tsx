@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { forceUpdateSite, forceUpdateAll } from "./actions";
+import { formatSiteHost } from "@/lib/site-url";
 
 interface SiteEntry {
   siteId: string;
@@ -90,7 +91,7 @@ export function PluginSitesClient({ pluginSlug, sites }: { pluginSlug: string; s
                 <TableRow key={s.siteId}>
                   <TableCell>
                     <Link href={`/sites/${s.siteId}`} className="font-medium hover:underline">
-                      {s.siteUrl}
+                      {formatSiteHost(s.siteUrl)}
                     </Link>
                   </TableCell>
                   <TableCell>{s.installedVersion}</TableCell>

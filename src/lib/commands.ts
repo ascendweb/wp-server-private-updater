@@ -1,6 +1,12 @@
 import { prisma } from "./db";
 import type { CommandType, Command } from "@prisma/client";
 
+export const SITE_COMMAND_TYPES = new Set<CommandType>(["refresh", "purge_cache"]);
+
+export function isSiteCommand(type: CommandType | string): boolean {
+  return SITE_COMMAND_TYPES.has(type as CommandType);
+}
+
 export function serializeCommand(command: Command) {
   return {
     id: command.id,
@@ -13,6 +19,27 @@ export function serializeCommand(command: Command) {
     createdAt: command.createdAt.toISOString(),
     completedAt: command.completedAt?.toISOString() ?? null,
   };
+}
+
+export function serializePendingCommand(command: Command) {
+  const payload: {
+    id: string;
+    type: CommandType;
+    plugin_slug?: string;
+    target_version?: string | null;
+    package_url?: string | null;
+  } = {
+    id: command.id,
+    type: command.type,
+  };
+
+  if (!isSiteCommand(command.type) && command.pluginSlug) {
+    payload.plugin_slug = command.pluginSlug;
+    payload.target_version = command.targetVersion;
+    payload.package_url = command.packageUrl;
+  }
+
+  return payload;
 }
 
 export async function latestCommandsBySite(
@@ -42,7 +69,7 @@ export async function latestCommandsBySite(
 export async function createCommand(
   siteId: string,
   type: CommandType,
-  pluginSlug: string,
+  pluginSlug?: string | null,
   targetVersion?: string | null,
   packageUrl?: string | null
 ): Promise<Command> {
@@ -50,9 +77,9 @@ export async function createCommand(
     data: {
       siteId,
       type,
-      pluginSlug,
-      targetVersion: targetVersion ?? null,
-      packageUrl: packageUrl ?? null,
+      pluginSlug: isSiteCommand(type) ? null : pluginSlug || null,
+      targetVersion: isSiteCommand(type) ? null : targetVersion ?? null,
+      packageUrl: isSiteCommand(type) ? null : packageUrl ?? null,
       status: "pending",
     },
   });
@@ -103,7 +130,7 @@ async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult>
 
 export type CommandSpec = {
   type: CommandType;
-  pluginSlug: string;
+  pluginSlug?: string | null;
   targetVersion?: string | null;
   packageUrl?: string | null;
 };
@@ -150,7 +177,7 @@ export async function createAndDispatchMany(
 export async function createAndDispatch(
   siteId: string,
   type: CommandType,
-  pluginSlug: string,
+  pluginSlug?: string | null,
   targetVersion?: string | null,
   packageUrl?: string | null
 ): Promise<Command> {

@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { createAndDispatch, serializeCommand } from "@/lib/commands";
+import { createAndDispatch, serializeCommand, isSiteCommand } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
@@ -69,7 +69,7 @@ export async function dispatchPluginCommands(
       const command = await createAndDispatch(
         sp.siteId,
         type,
-        plugin.slug,
+        isSiteCommand(type) ? null : plugin.slug,
         type === "update" ? releaseVersion : null,
         packageUrl
       );

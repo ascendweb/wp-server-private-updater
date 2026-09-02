@@ -63,7 +63,7 @@ export async function POST(
     },
   });
 
-  if (success && new_version) {
+  if (success && new_version && command.pluginSlug) {
     await prisma.sitePlugin.upsert({
       where: {
         siteId_pluginSlug: {
@@ -84,7 +84,7 @@ export async function POST(
         lastReportedAt: new Date(),
       },
     });
-  } else if (success && typeof is_active === "boolean") {
+  } else if (success && typeof is_active === "boolean" && command.pluginSlug) {
     await prisma.sitePlugin.updateMany({
       where: { siteId, pluginSlug: command.pluginSlug },
       data: { isActive: is_active, lastReportedAt: new Date() },

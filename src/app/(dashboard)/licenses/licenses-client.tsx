@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, MoreHorizontal, Ban, Trash2, CheckCircle, Copy, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
+import { formatSiteHost, sortBySiteUrl } from "@/lib/site-url";
 
 interface License {
   id: string;
@@ -147,7 +148,7 @@ export function LicensesClient({ initialLicenses }: { initialLicenses: License[]
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {initialLicenses.map((license) => (
+                {sortBySiteUrl(initialLicenses, (license) => license.siteUrl).map((license) => (
                   <TableRow key={license.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -160,7 +161,7 @@ export function LicensesClient({ initialLicenses }: { initialLicenses: License[]
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="flex items-center gap-1.5">
-                        {license.siteUrl}
+                        {formatSiteHost(license.siteUrl)}
                         {license.label?.startsWith("Auto-connected:") && (
                           <span title="Auto-connected">
                             <Link2 className="h-3.5 w-3.5 text-blue-500" />

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Puzzle, KeyRound, Globe, Activity, Terminal, Shield } from "lucide-react";
+import { formatSiteHost } from "@/lib/site-url";
 
 export default async function DashboardPage() {
   const [pluginCount, activeLicenses, recentCheckins, siteCount, sitesWithToken, recentCommands] = await Promise.all([
@@ -74,7 +75,7 @@ export default async function DashboardPage() {
                   <TableRow key={cmd.id}>
                     <TableCell>
                       <Link href={`/sites/${cmd.site.id}`} className="text-sm hover:underline">
-                        {cmd.site.url}
+                        {formatSiteHost(cmd.site.url)}
                       </Link>
                     </TableCell>
                     <TableCell>

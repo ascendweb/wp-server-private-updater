@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite } from "@/lib/license";
 import { prisma } from "@/lib/db";
+import { serializePendingCommand } from "@/lib/commands";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -47,12 +48,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    commands: commands.map((c) => ({
-      id: c.id,
-      type: c.type,
-      plugin_slug: c.pluginSlug,
-      target_version: c.targetVersion,
-      package_url: c.packageUrl,
-    })),
+    commands: commands.map(serializePendingCommand),
   });
 }

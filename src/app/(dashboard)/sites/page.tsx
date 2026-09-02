@@ -11,6 +11,7 @@ import { MoreHorizontal, RotateCw, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 import { sendSiteCommand } from "./actions";
+import { formatSiteHost } from "@/lib/site-url";
 
 interface SiteEntry {
   id: string;
@@ -70,7 +71,7 @@ export default function SitesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Site URL</TableHead>
+                  <TableHead>Site</TableHead>
                   <TableHead>Plugins</TableHead>
                   <TableHead>Licenses</TableHead>
                   <TableHead>Status</TableHead>
@@ -81,7 +82,7 @@ export default function SitesPage() {
               <TableBody>
                 {sites.map((site) => (
                   <TableRow key={site.id} className="cursor-pointer" onClick={() => router.push(`/sites/${site.id}`)}>
-                    <TableCell className="font-medium">{site.url}</TableCell>
+                    <TableCell className="font-medium">{formatSiteHost(site.url)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{site.pluginCount > 0 ? site.pluginCount : "—"}</TableCell>
                     <TableCell>{site.licenseCount}</TableCell>
                     <TableCell>
