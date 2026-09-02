@@ -80,7 +80,7 @@ export default async function DashboardPage() {
                     <TableCell>
                       <Badge variant="outline">{cmd.type}</Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{cmd.pluginSlug}</TableCell>
+                    <TableCell className="font-medium">{cmd.pluginSlug || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={cmd.status === "completed" ? "success" : cmd.status === "failed" ? "error" : "warn"}>
                         {cmd.status}

@@ -103,6 +103,7 @@ enum CommandType {
   activate
   deactivate
   refresh
+  purge_cache
 }
 
 enum CommandStatus {

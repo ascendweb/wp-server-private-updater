@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, CircleCheck, XCircle, Clock, Loader2, Trash2, ArrowUp } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, CircleCheck, XCircle, Clock, Loader2, Trash2, ArrowUp, RotateCw, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
+import { sendSiteCommand } from "../actions";
 
 interface SitePlugin {
   id: string;
@@ -131,6 +132,19 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
     setBusy(null);
   }
 
+  async function handleSiteCommand(type: "refresh" | "purge_cache") {
+    setBusy(type);
+    try {
+      await sendSiteCommand(site.id, type);
+      setPollNonce((n) => n + 1);
+      router.refresh();
+      toast.success(type === "refresh" ? "Refresh inventory command sent" : "Purge caches command sent");
+    } catch {
+      toast.error(type === "refresh" ? "Failed to send refresh" : "Failed to send cache purge");
+    }
+    setBusy(null);
+  }
+
   async function handleDeleteSite() {
     if (!confirm(`Delete site "${site.url}" and all its licenses and data? This cannot be undone.`)) return;
     setDeleting(true);
@@ -179,6 +193,17 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
 
   return (
     <>
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" onClick={() => handleSiteCommand("refresh")} disabled={busy === "refresh"}>
+          <RotateCw className={`mr-2 h-4 w-4 ${busy === "refresh" ? "animate-spin" : ""}`} />
+          Refresh inventory
+        </Button>
+        <Button variant="outline" onClick={() => handleSiteCommand("purge_cache")} disabled={busy === "purge_cache"}>
+          <Eraser className="mr-2 h-4 w-4" />
+          Purge caches
+        </Button>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
@@ -383,8 +408,8 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                       <TableCell>
                         <Badge variant="outline">{cmd.type}</Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{cmd.pluginSlug}</TableCell>
-                      <TableCell>{cmd.targetVersion || "Latest"}</TableCell>
+                      <TableCell className="font-medium">{cmd.pluginSlug || "\u2014"}</TableCell>
+                      <TableCell>{cmd.targetVersion || (cmd.type === "refresh" || cmd.type === "purge_cache" ? "\u2014" : "Latest")}</TableCell>
                       <TableCell className="max-w-[280px] overflow-hidden whitespace-normal">
                         <div className="flex items-center gap-1.5">
                           {statusIcon(cmd.status)}
@@ -412,7 +437,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
           <DialogHeader>
             <DialogTitle>Command details</DialogTitle>
             <DialogDescription className="break-words">
-              {selectedCommand ? `${selectedCommand.type} ${selectedCommand.pluginSlug}` : ""}
+              {selectedCommand ? [selectedCommand.type, selectedCommand.pluginSlug].filter(Boolean).join(" ") : ""}
             </DialogDescription>
           </DialogHeader>
           {selectedCommand && (
@@ -421,7 +446,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                 <span className="text-muted-foreground">Status</span>
                 <span className="min-w-0 break-words">{formatStatus(selectedCommand.status)}</span>
                 <span className="text-muted-foreground">Target</span>
-                <span className="min-w-0 break-words">{selectedCommand.targetVersion || "Latest"}</span>
+                <span className="min-w-0 break-words">{selectedCommand.targetVersion || (selectedCommand.type === "refresh" || selectedCommand.type === "purge_cache" ? "\u2014" : "Latest")}</span>
                 <span className="text-muted-foreground">Created</span>
                 <span className="min-w-0 break-words">{new Date(selectedCommand.createdAt).toLocaleString()}</span>
                 <span className="text-muted-foreground">Completed</span>

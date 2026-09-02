@@ -61,9 +61,18 @@ export async function createCommand(
 /**
  * Ping the site's REST endpoint so it polls for pending commands immediately.
  * The site verifies the site token, then calls back via POST /api/v1/commands/poll.
- * If the ping fails, the command stays pending for the site's next check-in.
+ *
+ * 409 means an upgrade is already running — not a failed dispatch.
+ * A timeout means the site may still be working (ignore_user_abort); results
+ * arrive on /api/v1/commands/{id}/result.
  */
-async function pingSite(siteUrl: string, siteToken: string): Promise<boolean> {
+export type PingResult = {
+  reached: boolean;
+  busy: boolean;
+  timedOut: boolean;
+};
+
+async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult> {
   const base = siteUrl.replace(/\/+$/, "");
   const pingUrl = `${base}/wp-json/wppu/v1/ping?token=${encodeURIComponent(siteToken)}`;
 
@@ -74,11 +83,64 @@ async function pingSite(siteUrl: string, siteToken: string): Promise<boolean> {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(90_000),
     });
+
+    if (response.status === 409) {
+      return { reached: true, busy: true, timedOut: false };
+    }
+
     const contentType = response.headers.get("content-type") || "";
-    return response.ok && contentType.includes("application/json");
-  } catch {
-    return false;
+    return {
+      reached: response.ok && contentType.includes("application/json"),
+      busy: false,
+      timedOut: false,
+    };
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "";
+    const timedOut = name === "TimeoutError" || name === "AbortError";
+    return { reached: false, busy: false, timedOut };
   }
+}
+
+export type CommandSpec = {
+  type: CommandType;
+  pluginSlug: string;
+  targetVersion?: string | null;
+  packageUrl?: string | null;
+};
+
+/**
+ * Create many commands for one site, then ping once so the site polls the full batch.
+ */
+export async function createAndDispatchMany(
+  siteId: string,
+  items: CommandSpec[]
+): Promise<Command[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const created: Command[] = [];
+  for (const item of items) {
+    created.push(
+      await createCommand(
+        siteId,
+        item.type,
+        item.pluginSlug,
+        item.targetVersion,
+        item.packageUrl
+      )
+    );
+  }
+
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
+  if (site.siteToken) {
+    await pingSite(site.url, site.siteToken);
+  }
+
+  return prisma.command.findMany({
+    where: { id: { in: created.map((c) => c.id) } },
+    orderBy: { createdAt: "asc" },
+  });
 }
 
 /**
@@ -92,13 +154,12 @@ export async function createAndDispatch(
   targetVersion?: string | null,
   packageUrl?: string | null
 ): Promise<Command> {
-  const command = await createCommand(siteId, type, pluginSlug, targetVersion, packageUrl);
-
-  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
-
-  if (site.siteToken) {
-    await pingSite(site.url, site.siteToken);
+  const commands = await createAndDispatchMany(siteId, [
+    { type, pluginSlug, targetVersion, packageUrl },
+  ]);
+  const command = commands[0];
+  if (!command) {
+    throw new Error("Failed to create command.");
   }
-
-  return prisma.command.findUniqueOrThrow({ where: { id: command.id } });
+  return command;
 }

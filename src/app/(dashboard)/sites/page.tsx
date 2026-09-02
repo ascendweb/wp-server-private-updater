@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, RotateCw, Eraser } from "lucide-react";
+import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
+import { sendSiteCommand } from "./actions";
 
 interface SiteEntry {
   id: string;
@@ -22,8 +27,21 @@ export default function SitesPage() {
   const router = useRouter();
   const [sites, setSites] = useState<SiteEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
 
   usePageHeader("Sites");
+
+  async function handleSiteCommand(siteId: string, type: "refresh" | "purge_cache") {
+    const key = `${type}-${siteId}`;
+    setBusy(key);
+    try {
+      await sendSiteCommand(siteId, type);
+      toast.success(type === "refresh" ? "Refresh inventory command sent" : "Purge caches command sent");
+    } catch {
+      toast.error(type === "refresh" ? "Failed to send refresh" : "Failed to send cache purge");
+    }
+    setBusy(null);
+  }
 
   useEffect(() => {
     async function load() {
@@ -57,6 +75,7 @@ export default function SitesPage() {
                   <TableHead>Licenses</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Check-in</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -71,6 +90,31 @@ export default function SitesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{site.lastCheckAt ? new Date(site.lastCheckAt).toLocaleString() : "Never"}</TableCell>
+                    <TableCell onClick={(event) => event.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-48">
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            onClick={() => handleSiteCommand(site.id, "refresh")}
+                            disabled={busy === `refresh-${site.id}`}
+                          >
+                            <RotateCw />
+                            Refresh inventory
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            onClick={() => handleSiteCommand(site.id, "purge_cache")}
+                            disabled={busy === `purge_cache-${site.id}`}
+                          >
+                            <Eraser />
+                            Purge caches
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

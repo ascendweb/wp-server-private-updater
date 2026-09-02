@@ -19,12 +19,13 @@ import {
   ArrowBigRightDash,
   CircleFadingArrowUp,
   Check,
+  Eraser,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
 
-type BulkCommandType = "update" | "activate" | "deactivate" | "refresh";
+type BulkCommandType = "update" | "activate" | "deactivate" | "refresh" | "purge_cache";
 
 interface PluginInfo {
   id: string;
@@ -316,6 +317,18 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     setRowBusy(null);
   }
 
+  async function handleRowPurge(siteId: string) {
+    setRowBusy(`purge-${siteId}`);
+    try {
+      await dispatchPluginCommands(plugin.id, [siteId], "purge_cache");
+      toast.success("Purge caches command sent");
+      kickPoll();
+    } catch {
+      toast.error("Failed to send cache purge");
+    }
+    setRowBusy(null);
+  }
+
   async function handleRowUpdate(siteId: string) {
     setRowBusy(`update-${siteId}`);
     try {
@@ -459,6 +472,10 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                       <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkCommand("refresh")} disabled={actionsDisabled}>
                         <RotateCw />
                         Refresh inventory
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkCommand("purge_cache")} disabled={actionsDisabled}>
+                        <Eraser />
+                        Purge caches
                       </DropdownMenuItem>
                       <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkAutoSync(true)} disabled={actionsDisabled}>
                         <RefreshCw />
@@ -624,6 +641,14 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="whitespace-nowrap"
+                                  onClick={() => handleRowPurge(sp.siteId)}
+                                  disabled={rowBusy === `purge-${sp.siteId}`}
+                                >
+                                  <Eraser />
+                                  Purge caches
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
                                   onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
                                   disabled={rowBusy === `sync-${sp.siteId}`}
                                 >
@@ -665,7 +690,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
           <DialogHeader>
             <DialogTitle>Command details</DialogTitle>
             <DialogDescription className="break-words">
-              {selectedCommand ? `${selectedCommand.type} ${selectedCommand.pluginSlug}` : ""}
+              {selectedCommand ? [selectedCommand.type, selectedCommand.pluginSlug].filter(Boolean).join(" ") : ""}
             </DialogDescription>
           </DialogHeader>
           {selectedCommand && (
@@ -769,7 +794,8 @@ function versionStatus(installed: string, available: string, latestVersion: stri
 }
 
 function labelForType(type: string) {
-  if (type === "refresh") return "Refresh";
+  if (type === "refresh") return "Refresh inventory";
+  if (type === "purge_cache") return "Purge caches";
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
