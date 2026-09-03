@@ -100,15 +100,18 @@ export type PingResult = {
 };
 
 async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult> {
+  const { createHmac } = await import("crypto");
   const base = siteUrl.replace(/\/+$/, "");
-  // Unique query string so CDNs cannot reuse a previous GET /wp-json/ ping.
-  const pingUrl = `${base}/wp-json/wppu/v1/ping?token=${encodeURIComponent(siteToken)}&n=${Date.now()}`;
+  const pingUrl = `${base}/wp-admin/admin-ajax.php`;
+
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const sig = createHmac("sha256", siteToken).update(ts).digest("hex");
 
   try {
     const response = await fetch(pingUrl, {
-      method: "GET",
-      cache: "no-store",
-      headers: { Accept: "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `action=wppu_ping&ts=${ts}&sig=${sig}`,
       signal: AbortSignal.timeout(90_000),
     });
 
