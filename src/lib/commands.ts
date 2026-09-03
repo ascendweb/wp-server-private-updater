@@ -102,7 +102,7 @@ export type PingResult = {
 async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult> {
   const { createHmac } = await import("crypto");
   const base = siteUrl.replace(/\/+$/, "");
-  const pingUrl = `${base}/wp-admin/admin-ajax.php`;
+  const pingUrl = `${base}/wp-admin/admin-post.php`;
 
   const ts = Math.floor(Date.now() / 1000).toString();
   const sig = createHmac("sha256", siteToken).update(ts).digest("hex");
