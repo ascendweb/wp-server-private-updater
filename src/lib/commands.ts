@@ -86,8 +86,15 @@ export async function createCommand(
 }
 
 /**
- * Ping the site's REST endpoint so it polls for pending commands immediately.
- * The site verifies the site token, then calls back via POST /api/v1/commands/poll.
+ * Ping the site so it polls for pending commands immediately. The site verifies
+ * the HMAC, then calls back via POST /api/v1/commands/poll.
+ *
+ * This must hit the site's front page rather than a /wp-admin/ endpoint. Managed
+ * hosts (WP Engine) decide whether a request is allowed to write .php files
+ * before any plugin code runs, and an anonymous POST to wp-admin is refused —
+ * plugin updates then fail part-way through unzipping. The plugin promotes the
+ * front-end request to an administrator itself. ManageWP and MainWP work the
+ * same way.
  *
  * 409 means an upgrade is already running — not a failed dispatch.
  * A timeout means the site may still be working (ignore_user_abort); results
@@ -101,17 +108,18 @@ export type PingResult = {
 
 async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult> {
   const { createHmac } = await import("crypto");
-  const base = siteUrl.replace(/\/+$/, "");
-  const pingUrl = `${base}/wp-admin/admin-post.php`;
+  // Trailing slash on purpose: a subdirectory install answers the bare path
+  // with a 301, and fetch would downgrade the redirected POST to a GET.
+  const pingUrl = `${siteUrl.replace(/\/+$/, "")}/`;
 
   const ts = Math.floor(Date.now() / 1000).toString();
-  const sig = createHmac("sha256", siteToken).update(ts).digest("hex");
+  const sig = createHmac("sha256", siteToken).update(`ping:${ts}`).digest("hex");
 
   try {
     const response = await fetch(pingUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `action=wppu_ping&ts=${ts}&sig=${sig}`,
+      body: `wppu_action=ping&ts=${ts}&sig=${sig}`,
       signal: AbortSignal.timeout(90_000),
     });
 
@@ -119,9 +127,15 @@ async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult>
       return { reached: true, busy: true, timedOut: false };
     }
 
-    const contentType = response.headers.get("content-type") || "";
+    // A site whose plugin is too old to recognize the ping just renders its
+    // home page, so a 200 alone does not mean the ping landed. Either marker
+    // from the handler will do, in case the host strips unknown headers.
+    const handled =
+      response.headers.get("x-wppu-handled") === "1" ||
+      (response.headers.get("content-type") || "").includes("application/json");
+
     return {
-      reached: response.ok && contentType.includes("application/json"),
+      reached: response.ok && handled,
       busy: false,
       timedOut: false,
     };
