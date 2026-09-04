@@ -8,10 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, Trash2, ArrowUp, RotateCw, Eraser } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, Trash2, ArrowUp, RotateCw, Eraser, Cookie } from "lucide-react";
 import { toast } from "sonner";
 import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
-import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
+import { sendCommand, deleteSite, bumpSitePlugin, reloadHostCookies } from "./actions";
 import { sendSiteCommand } from "../actions";
 import { formatSiteHost } from "@/lib/site-url";
 
@@ -48,6 +48,7 @@ interface SiteInfo {
   id: string;
   url: string;
   siteToken: boolean;
+  hasWpeAuth: boolean;
   licenseCount: number;
 }
 
@@ -134,6 +135,24 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
     setBusy(null);
   }
 
+  async function handleReloadCookies() {
+    setBusy("cookies");
+    try {
+      const result = await reloadHostCookies(site.id);
+      router.refresh();
+      if (!result.reached) {
+        toast.error("Site did not answer the ping. Is the plugin active?");
+      } else if (!result.stored) {
+        toast.error("Ping succeeded but the site did not return a WP Engine cookie. Deploy the latest plugin first.");
+      } else {
+        toast.success("WP Engine cookie stored. Remote updates will send it on the next ping.");
+      }
+    } catch {
+      toast.error("Failed to reload host cookies");
+    }
+    setBusy(null);
+  }
+
   async function handleSiteCommand(type: "refresh" | "purge_cache") {
     setBusy(type);
     try {
@@ -163,6 +182,10 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
   return (
     <>
       <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" onClick={handleReloadCookies} disabled={busy === "cookies"}>
+          <Cookie className={`mr-2 h-4 w-4 ${busy === "cookies" ? "animate-spin" : ""}`} />
+          {site.hasWpeAuth ? "Reload cookies" : "Load cookies"}
+        </Button>
         <Button variant="outline" onClick={() => handleSiteCommand("refresh")} disabled={busy === "refresh"}>
           <RotateCw className={`mr-2 h-4 w-4 ${busy === "refresh" ? "animate-spin" : ""}`} />
           Refresh inventory
@@ -173,7 +196,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Licenses</CardTitle>
@@ -197,6 +220,16 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
           <CardContent>
             <Badge variant={site.siteToken ? "success" : "warn"} className="text-lg">
               {site.siteToken ? "Active" : "Pending"}
+            </Badge>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">WP Engine cookie</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Badge variant={site.hasWpeAuth ? "success" : "warn"} className="text-lg">
+              {site.hasWpeAuth ? "Stored" : "Missing"}
             </Badge>
           </CardContent>
         </Card>

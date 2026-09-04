@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { createAndDispatchMany } from "@/lib/commands";
+import { createAndDispatchMany, reloadSiteHostCookies } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
@@ -102,4 +102,9 @@ export async function getReleaseVersions(pluginSlug: string) {
 export async function deleteSite(siteId: string) {
   await requireAuth();
   await prisma.site.delete({ where: { id: siteId } });
+}
+
+export async function reloadHostCookies(siteId: string) {
+  await requireAuth();
+  return reloadSiteHostCookies(siteId);
 }

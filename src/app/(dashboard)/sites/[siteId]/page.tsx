@@ -54,6 +54,7 @@ export default async function SiteDetailPage({
           id: site.id,
           url: site.url,
           siteToken: !!site.siteToken,
+          hasWpeAuth: !!site.wpeAuth,
           licenseCount: site._count.licenses,
         }}
         sitePlugins={site.plugins.map((sp) => ({

@@ -104,9 +104,15 @@ export type PingResult = {
   reached: boolean;
   busy: boolean;
   timedOut: boolean;
+  wpeAuth?: string;
 };
 
-async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult> {
+async function pingSite(
+  siteUrl: string,
+  siteToken: string,
+  wpeAuth?: string | null,
+  cookiesOnly = false
+): Promise<PingResult> {
   const { createHmac } = await import("crypto");
   // Trailing slash on purpose: a subdirectory install answers the bare path
   // with a 301, and fetch would downgrade the redirected POST to a GET.
@@ -115,11 +121,18 @@ async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult>
   const ts = Math.floor(Date.now() / 1000).toString();
   const sig = createHmac("sha256", siteToken).update(`ping:${ts}`).digest("hex");
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (wpeAuth) {
+    headers.Cookie = `wpe-auth=${wpeAuth}`;
+  }
+
   try {
     const response = await fetch(pingUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `wppu_action=ping&ts=${ts}&sig=${sig}`,
+      headers,
+      body: `wppu_action=ping&ts=${ts}&sig=${sig}${cookiesOnly ? "&wppu_cookies=1" : ""}`,
       signal: AbortSignal.timeout(90_000),
     });
 
@@ -134,16 +147,61 @@ async function pingSite(siteUrl: string, siteToken: string): Promise<PingResult>
       response.headers.get("x-wppu-handled") === "1" ||
       (response.headers.get("content-type") || "").includes("application/json");
 
+    let returnedAuth: string | undefined;
+    try {
+      const payload = (await response.json()) as {
+        data?: { wpe_auth?: unknown };
+      };
+      if (typeof payload.data?.wpe_auth === "string" && payload.data.wpe_auth) {
+        returnedAuth = payload.data.wpe_auth;
+      }
+    } catch {
+      // Home-page HTML when the plugin did not handle the ping.
+    }
+
     return {
       reached: response.ok && handled,
       busy: false,
       timedOut: false,
+      wpeAuth: returnedAuth,
     };
   } catch (error) {
     const name = error instanceof Error ? error.name : "";
     const timedOut = name === "TimeoutError" || name === "AbortError";
     return { reached: false, busy: false, timedOut };
   }
+}
+
+async function rememberWpeAuth(siteId: string, wpeAuth: string | undefined) {
+  if (!wpeAuth) {
+    return;
+  }
+  await prisma.site.update({
+    where: { id: siteId },
+    data: { wpeAuth },
+  });
+}
+
+/**
+ * Ping the site with no commands so it returns its WP Engine write cookie.
+ * Does not wait on heartbeat or cron.
+ */
+export async function reloadSiteHostCookies(siteId: string): Promise<{
+  reached: boolean;
+  stored: boolean;
+}> {
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
+  if (!site.siteToken) {
+    throw new Error("Site has no token yet.");
+  }
+
+  const result = await pingSite(site.url, site.siteToken, site.wpeAuth, true);
+  await rememberWpeAuth(siteId, result.wpeAuth);
+
+  return {
+    reached: result.reached,
+    stored: Boolean(result.wpeAuth),
+  };
 }
 
 export type CommandSpec = {
@@ -179,7 +237,8 @@ export async function createAndDispatchMany(
 
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   if (site.siteToken) {
-    await pingSite(site.url, site.siteToken);
+    const ping = await pingSite(site.url, site.siteToken, site.wpeAuth);
+    await rememberWpeAuth(siteId, ping.wpeAuth);
   }
 
   return prisma.command.findMany({
