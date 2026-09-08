@@ -79,7 +79,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <img src="/branding/logo-full.svg" className="h-12" />
+          <img src="/branding/logo-full.svg" className="h-12 mx-auto" />
           <CardDescription>Sign in to manage your WordPress Sites</CardDescription>
         </CardHeader>
         <CardContent>
