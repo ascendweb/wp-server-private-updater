@@ -117,7 +117,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>WordPress Plugin Setup</CardTitle>
               <CardDescription>
-                Instructions for setting up the WP Private Updater client plugin.
+                Instructions for setting up the TacoWP worker plugin.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

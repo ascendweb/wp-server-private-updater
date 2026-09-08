@@ -79,8 +79,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">WP Private Updater</CardTitle>
-          <CardDescription>Sign in to manage your plugins and licenses</CardDescription>
+          <img src="/branding/logo-full.svg" className="h-12" />
+          <CardDescription>Sign in to manage your WordPress Sites</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,20 +105,30 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
-            {enabledOAuthProviders.map((provider) => (
-              <Button
-                key={provider.id}
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={oauthLoading === provider.id}
-                onClick={() => handleOAuthSignIn(provider.id)}
-              >
-                {oauthLoading === provider.id
-                  ? "Redirecting..."
-                  : `Continue with ${provider.name}`}
-              </Button>
-            ))}
+            {enabledOAuthProviders.length > 0 && (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-medium text-muted-foreground">OR</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                {enabledOAuthProviders.map((provider) => (
+                  <Button
+                    key={provider.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={oauthLoading === provider.id}
+                    onClick={() => handleOAuthSignIn(provider.id)}
+                  >
+                    {oauthLoading === provider.id
+                      ? "Redirecting..."
+                      : `Continue with ${provider.name}`}
+                  </Button>
+                ))}
+              </>
+            )}
           </form>
         </CardContent>
       </Card>

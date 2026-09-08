@@ -1,5 +1,5 @@
 {
-  "name": "WP Private Updater",
+  "name": "Taco WP",
   "dockerComposeFile": "docker-compose.yaml",
   "service": "app",
   "workspaceFolder": "/workspace",

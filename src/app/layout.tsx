@@ -19,8 +19,8 @@ const fontMono = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "WP Private Updater",
-  description: "Self-hosted WordPress plugin update server",
+  title: "Taco WP",
+  description: "A self-hosted centralized dashboard for WordPress sites.",
 };
 
 export default function RootLayout({
