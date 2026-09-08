@@ -1,4 +1,4 @@
-# WP Private Updater
+# TacoWP
 
 A self-hosted server for distributing private WordPress plugin updates. Manages plugins sourced from private GitHub repositories, issues license keys to authorize WordPress sites, and serves update metadata and ZIP downloads to the WordPress update system.
 

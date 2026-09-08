@@ -125,8 +125,7 @@ export default function SettingsPage() {
                 <p className="font-medium mb-2">Installation Steps</p>
                 <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
                   <li>
-                    Upload the <code>wp-private-updater</code> plugin to your WP
-                    site
+                    Upload the <code>TacoWP Worker</code> plugin to your website
                   </li>
                   <li>Activate the plugin</li>
                   <li>

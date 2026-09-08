@@ -1,5 +1,5 @@
 {
-  "name": "Taco WP",
+  "name": "TacoWP",
   "dockerComposeFile": "docker-compose.yaml",
   "service": "app",
   "workspaceFolder": "/workspace",
