@@ -5,7 +5,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, KeyRound, Globe, Settings, LogOut, ChevronUp, User, Users } from "lucide-react";
+import { LayoutDashboard, KeyRound, Globe, Settings, LogOut, ChevronUp, User, Users, Puzzle } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
