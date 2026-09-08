@@ -99,20 +99,45 @@ export function CheeseSprinkleBackground({
     let last = performance.now();
     let frame = 0;
 
-    const resize = () => {
+    const syncSize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = Math.max(1, Math.floor(width * dpr));
-      canvas.height = Math.max(1, Math.floor(height * dpr));
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const nextWidth = canvas.clientWidth;
+      const nextHeight = canvas.clientHeight;
+      const nextBufferW = Math.max(1, Math.floor(nextWidth * dpr));
+      const nextBufferH = Math.max(1, Math.floor(nextHeight * dpr));
+      if (
+        nextWidth === width &&
+        nextHeight === height &&
+        canvas.width === nextBufferW &&
+        canvas.height === nextBufferH
+      ) {
+        return false;
+      }
 
+      width = nextWidth;
+      height = nextHeight;
+      canvas.width = nextBufferW;
+      canvas.height = nextBufferH;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return true;
+    };
+
+    const seedParticles = () => {
       const count = Math.max(70, Math.round((width * height) / 18000));
-      particles.length = 0;
-      for (let i = 0; i < count; i++) {
-        particles.push(makeParticle(i + 1, width, height, activePaths));
+      if (particles.length === 0) {
+        for (let i = 0; i < count; i++) {
+          particles.push(makeParticle(i + 1, width, height, activePaths));
+        }
+        return;
+      }
+
+      while (particles.length < count) {
+        particles.push(makeParticle(particles.length + 1, width, height, activePaths));
+      }
+      particles.length = count;
+      for (const s of particles) {
+        if (width > 0) s.x = ((s.x % width) + width) % width;
+        if (s.y - s.length > height) s.y = -s.length;
       }
     };
 
@@ -134,10 +159,16 @@ export function CheeseSprinkleBackground({
       ctx.restore();
     };
 
+    const paint = () => {
+      ctx.clearRect(0, 0, width, height);
+      for (const s of particles) {
+        drawParticle(s);
+      }
+    };
+
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      ctx.clearRect(0, 0, width, height);
 
       for (const s of particles) {
         if (!reduceMotion) {
@@ -149,20 +180,30 @@ export function CheeseSprinkleBackground({
             s.x = hash(s.y + s.x + 1) * width;
           }
         }
-        drawParticle(s);
       }
+
+      paint();
 
       if (!reduceMotion) {
         frame = requestAnimationFrame(tick);
       }
     };
 
+    const resize = () => {
+      if (!syncSize()) return;
+      seedParticles();
+      paint();
+    };
+
     resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
     window.addEventListener("resize", resize);
     frame = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(frame);
+      observer.disconnect();
       window.removeEventListener("resize", resize);
     };
   }, [pathsKey]);
@@ -171,7 +212,7 @@ export function CheeseSprinkleBackground({
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="pointer-events-none absolute inset-0"
+      className="pointer-events-none fixed size-full inset-0"
     />
   );
 }
