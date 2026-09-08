@@ -23,7 +23,7 @@ export async function bumpSitePlugin(sitePluginId: string, pluginSlug: string) {
 
   await prisma.sitePlugin.update({
     where: { id: sitePluginId },
-    data: { availableVersion: release.version },
+    data: { pinnedVersion: release.version },
   });
 }
 

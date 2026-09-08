@@ -1,4 +1,5 @@
 import { SetPageHeader } from "@/components/set-page-header";
+import type { Metadata } from "next";
 import {
   Card,
   CardContent,
@@ -11,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getServerOriginFromEnv } from "@/lib/utils";
+
+export const metadata: Metadata = { title: "Settings" };
 
 export default function SettingsPage() {
   const serverUrl = getServerOriginFromEnv("");

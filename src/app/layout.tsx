@@ -19,11 +19,11 @@ const fontMono = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "TacoWP",
-  description: "A self-hosted centralized dashboard for WordPress sites.",
-  icons: {
-    icon: "/branding/favicon.png",
+  title: {
+    default: "TacoWP",
+    template: "%s | TacoWP",
   },
+  description: "A self-hosted centralized dashboard for WordPress sites.",
 };
 
 export default function RootLayout({

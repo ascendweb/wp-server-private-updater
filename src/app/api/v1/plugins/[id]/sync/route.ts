@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getLatestRelease } from "@/lib/github";
+import { activeSiteWhere } from "@/lib/site-status";
 
 export async function POST(
   req: NextRequest,
@@ -31,12 +32,12 @@ export async function POST(
   }
 
   const where = siteIds && siteIds.length > 0
-    ? { pluginId: plugin.id, siteId: { in: siteIds } }
-    : { pluginId: plugin.id, autoSync: false };
+    ? { pluginId: plugin.id, siteId: { in: siteIds }, site: activeSiteWhere }
+    : { pluginId: plugin.id, autoSync: false, site: activeSiteWhere };
 
   await prisma.sitePlugin.updateMany({
     where,
-    data: { availableVersion: syncVersion },
+    data: { pinnedVersion: syncVersion },
   });
 
   return NextResponse.json({ success: true, version: syncVersion });

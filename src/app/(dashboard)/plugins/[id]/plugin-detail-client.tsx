@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge, BadgeGroup } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   RotateCw,
@@ -15,89 +15,67 @@ import {
   ArrowBigRightDash,
   CircleFadingArrowUp,
   Check,
-  Eraser,
+  BroomSparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatSiteHost, sortBySiteUrl } from "@/lib/site-url";
+import { formatSiteHost } from "@/lib/site-url";
 import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
+import type { PluginDetailPlugin, PluginRollout, PluginRolloutCommand, PluginRolloutSite } from "@/lib/plugin-rollout-types";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
+import { usePluginRollout } from "./use-plugin-rollout";
 
 type BulkCommandType = "update" | "activate" | "deactivate" | "refresh" | "purge_cache";
 
-interface PluginInfo {
-  id: string;
-  slug: string;
-  name: string;
-  githubOwner: string;
-  githubRepo: string;
-}
-
-export interface LatestCommand {
-  id: string;
-  siteId?: string;
-  type: string;
-  pluginSlug: string | null;
-  targetVersion: string | null;
-  status: string;
-  result: string | null;
-  createdAt: string;
-  completedAt: string | null;
-}
-
-interface SitePluginEntry {
-  id: string;
-  siteId: string;
-  siteUrl: string;
-  siteLabel: string;
-  installedVersion: string;
-  availableVersion: string | null;
-  autoSync: boolean;
-  isActive: boolean;
-  latestCommand: LatestCommand | null;
-}
+export type LatestCommand = PluginRolloutCommand;
+type SitePluginEntry = PluginRolloutSite;
 
 const INFLIGHT_STATUSES = new Set(["pending", "delivered", "in_progress"]);
 const RECENT_COMMAND_MS = 15 * 60 * 1000;
 const CELL_PAD = "px-5 py-2";
 
-export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo; sitePlugins: SitePluginEntry[] }) {
-  const [rows, setRows] = useState(sitePlugins);
-  const [latestVersion, setLatestVersion] = useState<string | null>(null);
-  const [loadingVersion, setLoadingVersion] = useState(true);
+export function PluginDetailClient({
+  plugin,
+  latestVersion: initialLatestVersion,
+  initialRollout,
+}: {
+  plugin: PluginDetailPlugin;
+  latestVersion: string | null;
+  initialRollout: PluginRollout;
+}) {
+  const { rollout, mergeCommands, updateSites, updateSitePlugin } = usePluginRollout(
+    plugin.id,
+    initialRollout
+  );
+  const rows = rollout.sites;
+  const [latestVersion, setLatestVersion] = useState(initialLatestVersion);
   const [refreshingVersion, setRefreshingVersion] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
-  const [pollKey, setPollKey] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [selectedCommand, setSelectedCommand] = useState<LatestCommand | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const lastClickedIndex = useRef<number | null>(null);
 
   useEffect(() => {
-    setRows(sortBySiteUrl(sitePlugins, (sp) => sp.siteUrl));
-  }, [sitePlugins]);
+    setLatestVersion(initialLatestVersion);
+  }, [initialLatestVersion]);
+
+  useEffect(() => {
+    const ids = new Set(rows.map((row) => row.siteId));
+    setSelected((prev) => {
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+      return next;
+    });
+  }, [rows]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/v1/releases/${plugin.slug}`);
-        if (res.ok) {
-          const data = await res.json();
-          setLatestVersion(data.version || null);
-        }
-      } catch { }
-      setLoadingVersion(false);
-    }
-    load();
-  }, [plugin.slug]);
 
   useEffect(() => {
     if (!selectedCommand) return;
@@ -111,43 +89,6 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
       setSelectedCommand(next);
     }
   }, [rows, selectedCommand]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    async function poll() {
-      try {
-        const res = await fetch(`/api/v1/plugins/${plugin.id}/rollout`);
-        if (res.ok) {
-          const data = (await res.json()) as { inflight?: boolean; sites: SitePluginEntry[] };
-          if (!cancelled && Array.isArray(data.sites)) {
-            setRows(sortBySiteUrl(data.sites, (sp) => sp.siteUrl));
-            const inflight =
-              data.inflight ||
-              data.sites.some((sp) => sp.latestCommand && INFLIGHT_STATUSES.has(sp.latestCommand.status));
-            if (inflight) {
-              timer = setTimeout(poll, 2000);
-            }
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          timer = setTimeout(poll, 8000);
-        }
-      }
-    }
-
-    poll();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [plugin.id, pollKey]);
-
-  function kickPoll() {
-    setPollKey((key) => key + 1);
-  }
 
   async function refreshLatestVersion() {
     setRefreshingVersion(true);
@@ -256,7 +197,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     try {
       const version = await bumpSites(siteIds);
       toast.success(`Bumped v${version} to ${siteIds.length} site${siteIds.length === 1 ? "" : "s"}`);
-      kickPoll();
+      updateSites(siteIds, { pinnedVersion: version });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Bump failed");
     }
@@ -270,7 +211,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     try {
       const result = await dispatchPluginCommands(plugin.id, siteIds, type);
       toast.success(`${labelForType(type)} sent to ${result.dispatched} site${result.dispatched === 1 ? "" : "s"}`);
-      kickPoll();
+      mergeCommands(result.commands);
     } catch {
       toast.error(`Failed to ${type} selected sites`);
     }
@@ -284,7 +225,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     try {
       await setSitesAutoSync(plugin.id, siteIds, autoSync);
       toast.success(autoSync ? "Auto-sync enabled" : "Auto-sync disabled");
-      kickPoll();
+      updateSites(siteIds, { autoSync });
     } catch {
       toast.error("Failed to update auto-sync");
     }
@@ -296,7 +237,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     try {
       const version = await bumpSites([siteId]);
       toast.success(`Bumped to v${version}`);
-      kickPoll();
+      updateSites([siteId], { pinnedVersion: version });
     } catch {
       toast.error("Bump failed");
     }
@@ -306,9 +247,9 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   async function handleRowRefresh(siteId: string) {
     setRowBusy(`refresh-${siteId}`);
     try {
-      await dispatchPluginCommands(plugin.id, [siteId], "refresh");
+      const result = await dispatchPluginCommands(plugin.id, [siteId], "refresh");
       toast.success("Refresh command sent");
-      kickPoll();
+      mergeCommands(result.commands);
     } catch {
       toast.error("Failed to send refresh");
     }
@@ -318,9 +259,9 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   async function handleRowPurge(siteId: string) {
     setRowBusy(`purge-${siteId}`);
     try {
-      await dispatchPluginCommands(plugin.id, [siteId], "purge_cache");
+      const result = await dispatchPluginCommands(plugin.id, [siteId], "purge_cache");
       toast.success("Purge caches command sent");
-      kickPoll();
+      mergeCommands(result.commands);
     } catch {
       toast.error("Failed to send cache purge");
     }
@@ -330,9 +271,9 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
   async function handleRowUpdate(siteId: string) {
     setRowBusy(`update-${siteId}`);
     try {
-      await dispatchPluginCommands(plugin.id, [siteId], "update");
+      const result = await dispatchPluginCommands(plugin.id, [siteId], "update");
       toast.success("Update command sent");
-      kickPoll();
+      mergeCommands(result.commands);
     } catch {
       toast.error("Failed to send update");
     }
@@ -344,7 +285,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
     try {
       await setSitesAutoSync(plugin.id, [siteId], autoSync);
       toast.success(autoSync ? "Auto-sync enabled" : "Auto-sync disabled");
-      kickPoll();
+      updateSites([siteId], { autoSync });
     } catch {
       toast.error("Failed to toggle auto-sync");
     }
@@ -356,11 +297,11 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
       const res = await fetch(`/api/v1/site-plugins/${spId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ availableVersion: value || null }),
+        body: JSON.stringify({ pinnedVersion: value || null }),
       });
       if (res.ok) {
         toast.success("Version updated");
-        kickPoll();
+        updateSitePlugin(spId, { pinnedVersion: value || null });
       } else {
         toast.error("Failed to update version");
       }
@@ -372,7 +313,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
 
   function canBump(sp: SitePluginEntry) {
     if (!latestVersion || sp.autoSync) return false;
-    const avail = sp.availableVersion || sp.installedVersion;
+    const avail = sp.pinnedVersion || sp.installedVersion;
     return isNewer(latestVersion, avail);
   }
 
@@ -389,14 +330,14 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <div className="text-3xl font-bold">{loadingVersion ? "..." : latestVersion ? `v${latestVersion}` : "N/A"}</div>
+              <div className="text-3xl font-bold">{latestVersion ? `v${latestVersion}` : "N/A"}</div>
               <Button
                 type="button"
                 variant="subtle"
                 size="icon"
                 className="size-10 ms-auto"
                 onClick={refreshLatestVersion}
-                disabled={refreshingVersion || loadingVersion}
+                disabled={refreshingVersion}
               >
                 <RotateCw className={`h-5 w-5 ${refreshingVersion ? "animate-spin" : ""}`} strokeWidth={2.75} absoluteStrokeWidth />
               </Button>
@@ -472,7 +413,7 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                         Refresh inventory
                       </DropdownMenuItem>
                       <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkCommand("purge_cache")} disabled={actionsDisabled}>
-                        <Eraser />
+                        <BroomSparkles />
                         Purge caches
                       </DropdownMenuItem>
                       <DropdownMenuItem className="whitespace-nowrap" onClick={() => handleBulkAutoSync(true)} disabled={actionsDisabled}>
@@ -502,9 +443,8 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                       </TableHead>
                       <TableHead className={`w-full ${CELL_PAD}`}>Site</TableHead>
                       <TableHead className={CELL_PAD}>Active</TableHead>
-                      <TableHead className={CELL_PAD}>Auto-Sync</TableHead>
                       <TableHead className={CELL_PAD}>Installed</TableHead>
-                      <TableHead className={CELL_PAD}>Available</TableHead>
+                      <TableHead className={CELL_PAD}>Pinned</TableHead>
                       <TableHead className={CELL_PAD}>Status</TableHead>
                       <TableHead className={CELL_PAD}>Command</TableHead>
                       <TableHead className={`w-12 ${CELL_PAD}`} />
@@ -512,11 +452,11 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                   </TableHeader>
                   <TableBody>
                     {rows.map((sp, index) => {
-                      const avail = sp.availableVersion || sp.installedVersion;
+                      const avail = sp.pinnedVersion || sp.installedVersion;
                       const bumpable = canBump(sp);
                       const cmd = visibleCommand(sp.latestCommand, now);
                       const isRowSelected = selected.has(sp.siteId);
-                      const rollout = versionStatus(sp.installedVersion, avail, latestVersion);
+                      const rollout = versionStatus(sp.installedVersion, avail);
 
                       return (
                         <TableRow
@@ -542,13 +482,10 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                             <span className="text-sm">{sp.isActive ? "Active" : "Inactive"}</span>
                           </TableCell>
                           <TableCell className={CELL_PAD}>
-                            <span className="text-sm">{sp.autoSync ? "On" : "Off"}</span>
-                          </TableCell>
-                          <TableCell className={CELL_PAD}>
                             <span className="text-sm">v{sp.installedVersion}</span>
                           </TableCell>
                           <TableCell className={CELL_PAD}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-end gap-1.5">
                               {sp.autoSync ? (
                                 <span className="text-sm">v{avail}</span>
                               ) : editingId !== sp.id ? (
@@ -592,22 +529,33 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                   }}
                                 />
                               )}
-                              {bumpable && editingId !== sp.id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  title="Bump To Latest"
-                                  className="group h-6 px-2 text-xs bg-muted/30"
-                                  onClick={() => handleRowBump(sp.siteId)}
-                                  disabled={rowBusy === `bump-${sp.siteId}`}
-                                >
-                                  <ArrowBigRightDash className="h-3 w-3" />
-                                </Button>
+                              {sp.autoSync && (
+                                <span className="text-sm font-black uppercase text-blue-500">AUTO</span>
                               )}
                             </div>
                           </TableCell>
                           <TableCell className={CELL_PAD}>
-                            <Badge variant={rollout.variant}>{rollout.label}</Badge>
+                            <BadgeGroup>
+                              <Badge variant={rollout.variant}>{rollout.label}</Badge>
+                              {bumpable && (
+                                <Badge
+                                  variant="info"
+                                  render={
+                                    <button
+                                      type="button"
+                                      disabled={rowBusy === `bump-${sp.siteId}`}
+                                    />
+                                  }
+                                  title="Bump to latest"
+                                  aria-label="Bump to latest"
+                                  onClick={() => handleRowBump(sp.siteId)}
+                                  className="cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900 disabled:pointer-events-none disabled:opacity-50"
+                                >
+                                  New
+                                  <ArrowBigRightDash data-icon="inline-end" />
+                                </Badge>
+                              )}
+                            </BadgeGroup>
                           </TableCell>
                           <TableCell className={CELL_PAD}>
                             {cmd ? (
@@ -631,30 +579,6 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                               <DropdownMenuContent align="end" className="min-w-48">
                                 <DropdownMenuItem
                                   className="whitespace-nowrap"
-                                  onClick={() => handleRowRefresh(sp.siteId)}
-                                  disabled={rowBusy === `refresh-${sp.siteId}`}
-                                >
-                                  <RotateCw />
-                                  Refresh inventory
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="whitespace-nowrap"
-                                  onClick={() => handleRowPurge(sp.siteId)}
-                                  disabled={rowBusy === `purge-${sp.siteId}`}
-                                >
-                                  <Eraser />
-                                  Purge caches
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="whitespace-nowrap"
-                                  onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
-                                  disabled={rowBusy === `sync-${sp.siteId}`}
-                                >
-                                  <RefreshCw />
-                                  {sp.autoSync ? "Disable auto-sync" : "Enable auto-sync"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="whitespace-nowrap"
                                   onClick={() => handleRowUpdate(sp.siteId)}
                                   disabled={rowBusy === `update-${sp.siteId}`}
                                 >
@@ -668,6 +592,32 @@ export function PluginDetailClient({ plugin, sitePlugins }: { plugin: PluginInfo
                                 >
                                   <ArrowBigRightDash />
                                   Bump
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
+                                  onClick={() => handleRowAutoSync(sp.siteId, !sp.autoSync)}
+                                  disabled={rowBusy === `sync-${sp.siteId}`}
+                                >
+                                  <RefreshCw />
+                                  {sp.autoSync ? "Disable Auto-Sync" : "Enable Auto-Sync"}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
+                                  onClick={() => handleRowRefresh(sp.siteId)}
+                                  disabled={rowBusy === `refresh-${sp.siteId}`}
+                                >
+                                  <RotateCw />
+                                  Refresh
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="whitespace-nowrap"
+                                  onClick={() => handleRowPurge(sp.siteId)}
+                                  disabled={rowBusy === `purge-${sp.siteId}`}
+                                >
+                                  <BroomSparkles />
+                                  Purge Caches
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -788,14 +738,11 @@ function visibleCommand(cmd: LatestCommand | null, now: number): LatestCommand |
   return cmd;
 }
 
-function versionStatus(installed: string, available: string, latestVersion: string | null) {
-  if (latestVersion && isNewer(latestVersion, available)) {
-    return { label: "Outdated", variant: "error" as const };
-  }
+function versionStatus(installed: string, available: string) {
   if (available !== installed) {
-    return { label: "Update Available", variant: "warn" as const };
+    return { label: "Pending", variant: "warn" as const };
   }
-  return { label: "Up to Date", variant: "success" as const };
+  return { label: "Current", variant: "success" as const };
 }
 
 function labelForType(type: string) {

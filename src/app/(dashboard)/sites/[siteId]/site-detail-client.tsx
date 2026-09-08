@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, Archive, ArchiveRestore, ArrowUp, RotateCw, Eraser, Cookie } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, Archive, ArchiveRestore, ArrowUp, RotateCw, BroomSparkles, Cookie } from "lucide-react";
 import { toast } from "sonner";
 import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
 import { sendCommand, archiveSite, restoreSite, bumpSitePlugin, reloadHostCookies } from "./actions";
@@ -20,7 +20,7 @@ interface SitePlugin {
   pluginSlug: string;
   pluginName: string;
   installedVersion: string;
-  availableVersion: string | null;
+  pinnedVersion: string | null;
   autoSync: boolean;
   isActive: boolean;
   isManaged: boolean;
@@ -220,7 +220,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
             Refresh inventory
           </Button>
           <Button variant="outline" onClick={() => handleSiteCommand("purge_cache")} disabled={busy === "purge_cache"}>
-            <Eraser className="mr-2 h-4 w-4" />
+            <BroomSparkles className="mr-2 h-4 w-4" />
             Purge caches
           </Button>
         </div>
@@ -279,7 +279,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                 <TableRow>
                   <TableHead>Plugin</TableHead>
                   <TableHead>Installed</TableHead>
-                  <TableHead>Available</TableHead>
+                  <TableHead>Pinned</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Reported</TableHead>
                   <TableHead className="w-12" />
@@ -292,7 +292,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                     return a.pluginName.localeCompare(b.pluginName);
                   })
                   .map((sp) => {
-                    const avail = sp.availableVersion || sp.installedVersion;
+                    const avail = sp.pinnedVersion || sp.installedVersion;
                     const differs = avail !== sp.installedVersion;
 
                     return (

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { SetPageHeader } from "@/components/set-page-header";
+import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Puzzle, KeyRound, Globe, Activity, Terminal, Shield } from "lucide-react";
 import { formatSiteHost } from "@/lib/site-url";
 import { activeSiteWhere, excludeArchivedSiteLicenses } from "@/lib/site-status";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const [pluginCount, activeLicenses, recentCheckins, siteCount, sitesWithToken, recentCommands] = await Promise.all([

@@ -92,7 +92,7 @@ model SitePlugin {
   installedVersion String?
   isActive         Boolean   @default(false)
   isLocked         Boolean   @default(false)
-  availableVersion String?
+  pinnedVersion    String?
   autoSync         Boolean   @default(false)
   lastReportedAt   DateTime  @default(now())
 

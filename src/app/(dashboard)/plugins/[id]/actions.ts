@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { createAndDispatch, serializeCommand, isSiteCommand } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
 import { getServerOriginFromEnv } from "@/lib/utils";
+import { activeSiteWhere } from "@/lib/site-status";
 import type { CommandType } from "@prisma/client";
 
 async function requireAuth() {
@@ -35,7 +36,7 @@ export async function dispatchPluginCommands(
     where: {
       pluginId: plugin.id,
       siteId: { in: siteIds },
-      site: { status: "active" },
+      site: activeSiteWhere,
     },
     include: {
       site: {
@@ -93,7 +94,7 @@ export async function setSitesAutoSync(
   }
 
   const result = await prisma.sitePlugin.updateMany({
-    where: { pluginId, siteId: { in: siteIds } },
+    where: { pluginId, siteId: { in: siteIds }, site: activeSiteWhere },
     data: { autoSync },
   });
 

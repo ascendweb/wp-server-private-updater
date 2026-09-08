@@ -1,10 +1,19 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { prisma } from "@/lib/db";
-import { latestCommandsBySite, serializeCommand } from "@/lib/commands";
+import type { Metadata } from "next";
 import { SetPageHeader } from "@/components/set-page-header";
 import { PluginDetailClient } from "./plugin-detail-client";
-import { activeSiteWhere } from "@/lib/site-status";
+import { getPluginDetailData } from "@/lib/plugin-rollout";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const data = await getPluginDetailData(id);
+  return { title: data?.plugin.name ?? "Plugin" };
+}
 
 export default async function PluginDetailPage({
   params,
@@ -12,61 +21,26 @@ export default async function PluginDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
-  const plugin = await prisma.plugin.findUnique({
-    where: { id },
-    include: {
-      sitePlugins: {
-        where: { site: activeSiteWhere },
-        include: {
-          site: { select: { id: true, url: true, label: true } },
-        },
-        orderBy: { site: { url: "asc" } },
-      },
-    },
-  });
-
-  if (!plugin) notFound();
-
-  const latestBySite = await latestCommandsBySite(
-    plugin.slug,
-    plugin.sitePlugins.map((sp) => sp.siteId),
-    "update"
-  );
+  const data = await getPluginDetailData(id);
+  if (!data) notFound();
 
   return (
     <div className="space-y-6">
-      <SetPageHeader title={plugin.name} />
+      <SetPageHeader title={data.plugin.name} />
       <div>
         <Link href="/plugins" className="text-sm text-muted-foreground hover:underline">
           &larr; Back to Plugins
         </Link>
-        {plugin.description && (
-          <p className="text-muted-foreground mt-1">{plugin.description}</p>
+        {data.plugin.description && (
+          <p className="text-muted-foreground mt-1">{data.plugin.description}</p>
         )}
       </div>
 
       <PluginDetailClient
-        plugin={{
-          id: plugin.id,
-          slug: plugin.slug,
-          name: plugin.name,
-          githubOwner: plugin.githubOwner,
-          githubRepo: plugin.githubRepo,
-        }}
-        sitePlugins={plugin.sitePlugins.map((sp) => ({
-          id: sp.id,
-          siteId: sp.site.id,
-          siteUrl: sp.site.url,
-          siteLabel: sp.site.label || sp.site.url,
-          installedVersion: sp.installedVersion || "Unknown",
-          availableVersion: sp.availableVersion ?? sp.installedVersion ?? null,
-          autoSync: sp.autoSync,
-          isActive: sp.isActive,
-          latestCommand: latestBySite.has(sp.siteId)
-            ? serializeCommand(latestBySite.get(sp.siteId)!)
-            : null,
-        }))}
+        key={data.plugin.id}
+        plugin={data.plugin}
+        latestVersion={data.latestVersion}
+        initialRollout={data.rollout}
       />
     </div>
   );

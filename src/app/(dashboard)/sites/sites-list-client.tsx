@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, RotateCw, Eraser } from "lucide-react";
+import { MoreHorizontal, RotateCw, BroomSparkles } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 import { sendSiteCommand } from "./actions";
@@ -133,7 +133,7 @@ export function SitesListClient({ archived }: { archived: boolean }) {
                               onClick={() => handleSiteCommand(site.id, "purge_cache")}
                               disabled={busy === `purge_cache-${site.id}`}
                             >
-                              <Eraser />
+                              <BroomSparkles />
                               Purge caches
                             </DropdownMenuItem>
                           </DropdownMenuContent>

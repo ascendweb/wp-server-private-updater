@@ -1,11 +1,25 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { SetPageHeader } from "@/components/set-page-header";
 import { Badge } from "@/components/ui/badge";
 import { SiteDetailClient } from "./site-detail-client";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { SITE_STATUS_ARCHIVED } from "@/lib/site-status";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ siteId: string }>;
+}): Promise<Metadata> {
+  const { siteId } = await params;
+  const site = await prisma.site.findUnique({
+    where: { id: siteId },
+    select: { url: true, label: true },
+  });
+  return { title: site ? formatSiteTitle(site.url, site.label) : "Site" };
+}
 
 export default async function SiteDetailPage({
   params,
@@ -70,7 +84,7 @@ export default async function SiteDetailPage({
           pluginSlug: sp.pluginSlug,
           pluginName: sp.plugin?.name || sp.pluginName || sp.pluginSlug,
           installedVersion: sp.installedVersion || "Unknown",
-          availableVersion: sp.availableVersion ?? sp.installedVersion ?? null,
+          pinnedVersion: sp.pinnedVersion ?? sp.installedVersion ?? null,
           autoSync: sp.autoSync,
           isActive: sp.isActive,
           isManaged: !!sp.pluginId,

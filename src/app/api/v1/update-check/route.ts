@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       pluginSlug: slug,
       pluginId: plugin.id,
       installedVersion: version,
-      availableVersion: version,
+      pinnedVersion: version,
       isActive: true,
       lastReportedAt: new Date(),
     },
@@ -69,11 +69,11 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (sp.availableVersion && isNewerVersion(sp.availableVersion, version)) {
+  if (sp.pinnedVersion && isNewerVersion(sp.pinnedVersion, version)) {
     return NextResponse.json({
       slug: plugin.slug,
-      new_version: sp.availableVersion,
-      package: `${serverUrl}/api/v1/download/${plugin.slug}/${sp.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+      new_version: sp.pinnedVersion,
+      package: `${serverUrl}/api/v1/download/${plugin.slug}/${sp.pinnedVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
       sections: { changelog: "" },
       site_token: siteToken,
     });

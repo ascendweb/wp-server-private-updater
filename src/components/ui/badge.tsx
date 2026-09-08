@@ -1,6 +1,7 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ const badgeVariants = cva("group/badge inline-flex w-fit shrink-0 items-center j
       success: "border-green-100 bg-green-100 text-green-800 dark:border-green-950 dark:bg-green-950 dark:text-green-400",
       error: "border-red-100 bg-red-100 text-red-800 dark:border-red-950 dark:bg-red-950 dark:text-red-400",
       warn: "border-orange-100 bg-orange-100 text-orange-800 dark:border-orange-950 dark:bg-orange-950 dark:text-orange-400",
+      info: "border-blue-100 bg-blue-100 text-blue-800 dark:border-blue-950 dark:bg-blue-950 dark:text-blue-400",
       subtle: "border-muted bg-muted text-muted-foreground dark:border-muted dark:bg-muted dark:text-muted-foreground",
     },
   },
@@ -41,4 +43,25 @@ function Badge({ className, variant = "default", render, ...props }: useRender.C
   });
 }
 
-export { Badge, badgeVariants };
+function BadgeGroup({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="badge-group"
+      className={cn(
+        "inline-flex items-center",
+        "[&>:first-child:not(:only-child)]:rounded-r-none",
+        "[&>:first-child:not(:only-child)]:overflow-visible",
+        "[&>:first-child:not(:only-child)]:[clip-path:polygon(0_0,100%_0,calc(100%-5px)_100%,0_100%)]",
+        "[&>:not(:first-child)]:-ml-1.25",
+        "[&>:not(:first-child)]:rounded-l-none",
+        "[&>:not(:first-child)]:pl-4.25",
+        "[&>:not(:first-child)]:overflow-visible",
+        "[&>:not(:first-child)]:[clip-path:polygon(5px_0,100%_0,100%_100%,0_100%)]",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Badge, BadgeGroup, badgeVariants };

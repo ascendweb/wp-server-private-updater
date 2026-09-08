@@ -178,80 +178,80 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
         }}
       >
         <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editPlugin ? "Edit Plugin" : "Add Plugin"}
-              </DialogTitle>
-              <DialogDescription>
-                {editPlugin
-                  ? "Update the plugin configuration."
-                  : "Register a new plugin from a GitHub repository."}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="slug">Slug</Label>
-                  <Input
-                    id="slug"
-                    name="slug"
-                    placeholder="my-plugin"
-                    defaultValue={editPlugin?.slug}
-                    required
-                    disabled={!!editPlugin}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="My Plugin"
-                    defaultValue={editPlugin?.name}
-                    required
-                  />
-                </div>
-              </div>
+          <DialogHeader>
+            <DialogTitle>
+              {editPlugin ? "Edit Plugin" : "Add Plugin"}
+            </DialogTitle>
+            <DialogDescription>
+              {editPlugin
+                ? "Update the plugin configuration."
+                : "Register a new plugin from a GitHub repository."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Optional description"
-                  defaultValue={editPlugin?.description || ""}
+                <Label htmlFor="slug">Slug</Label>
+                <Input
+                  id="slug"
+                  name="slug"
+                  placeholder="my-plugin"
+                  defaultValue={editPlugin?.slug}
+                  required
+                  disabled={!!editPlugin}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="githubUrl">GitHub Repository URL</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input
-                  id="githubUrl"
-                  name="githubUrl"
-                  placeholder="https://github.com/octocat/my-wp-plugin"
-                  defaultValue={
-                    editPlugin
-                      ? `https://github.com/${editPlugin.githubOwner}/${editPlugin.githubRepo}`
-                      : ""
-                  }
+                  id="name"
+                  name="name"
+                  placeholder="My Plugin"
+                  defaultValue={editPlugin?.name}
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="releaseAssetPattern">Release Asset Pattern</Label>
-                <Input
-                  id="releaseAssetPattern"
-                  name="releaseAssetPattern"
-                  placeholder="{slug}-v{version}.zip"
-                  defaultValue={editPlugin?.releaseAssetPattern || "{slug}-v{version}.zip"}
-                  required
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Saving..." : editPlugin ? "Update" : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Optional description"
+                defaultValue={editPlugin?.description || ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="githubUrl">GitHub Repository URL</Label>
+              <Input
+                id="githubUrl"
+                name="githubUrl"
+                placeholder="https://github.com/octocat/my-wp-plugin"
+                defaultValue={
+                  editPlugin
+                    ? `https://github.com/${editPlugin.githubOwner}/${editPlugin.githubRepo}`
+                    : ""
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="releaseAssetPattern">Release Asset Pattern</Label>
+              <Input
+                id="releaseAssetPattern"
+                name="releaseAssetPattern"
+                placeholder="{slug}-v{version}.zip"
+                defaultValue={editPlugin?.releaseAssetPattern || "{slug}-v{version}.zip"}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : editPlugin ? "Update" : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
       </Dialog>
 
       <Card>
@@ -270,9 +270,10 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Plugin</TableHead>
+                  <TableHead className="w-full">Plugin</TableHead>
                   <TableHead>Slug</TableHead>
                   <TableHead>Latest</TableHead>
+                  <TableHead></TableHead>
                   <TableHead>GitHub</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -296,24 +297,24 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                       <Badge variant="secondary">{plugin.slug}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span>{latestVersions[plugin.slug] ?? "..."}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            refreshLatestVersion(plugin.slug);
-                          }}
-                          disabled={refreshingSlug === plugin.slug}
-                        >
-                          <RotateCw
-                            className={`h-3.5 w-3.5 ${refreshingSlug === plugin.slug ? "animate-spin" : ""}`}
-                          />
-                        </Button>
-                      </div>
+                      <span className="min-w-[10ch]">{latestVersions[plugin.slug] ?? "..."}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          refreshLatestVersion(plugin.slug);
+                        }}
+                        disabled={refreshingSlug === plugin.slug}
+                      >
+                        <RotateCw
+                          className={`h-3 w-3 bg-neutral-100 hover:text-blue-500 ${refreshingSlug === plugin.slug ? "animate-spin" : ""}`}
+                        />
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <a

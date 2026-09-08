@@ -13,10 +13,10 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const data: { availableVersion?: string | null; autoSync?: boolean } = {};
+  const data: { pinnedVersion?: string | null; autoSync?: boolean } = {};
 
-  if (typeof body.availableVersion === "string" || body.availableVersion === null) {
-    data.availableVersion = body.availableVersion;
+  if (typeof body.pinnedVersion === "string" || body.pinnedVersion === null) {
+    data.pinnedVersion = body.pinnedVersion;
   }
   if (typeof body.autoSync === "boolean") {
     data.autoSync = body.autoSync;

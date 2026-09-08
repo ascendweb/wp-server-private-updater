@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { createAndDispatch } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
 import { getServerOriginFromEnv } from "@/lib/utils";
+import { activeSiteWhere } from "@/lib/site-status";
 
 async function requireAuth() {
   const session = await auth();
@@ -44,7 +45,7 @@ export async function forceUpdateAll(pluginSlug: string) {
     where: {
       pluginSlug,
       isLocked: false,
-      site: { status: "active" },
+      site: activeSiteWhere,
     },
     include: {
       site: {

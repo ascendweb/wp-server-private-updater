@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
             pluginSlug: slug,
             pluginId: plugin.id,
             installedVersion: version,
-            availableVersion: version,
+            pinnedVersion: version,
             isActive: true,
             lastReportedAt: new Date(),
           },
@@ -96,13 +96,13 @@ export async function POST(req: NextRequest) {
         ] as const;
       }
 
-      if (sp.availableVersion && isNewerVersion(sp.availableVersion, version)) {
+      if (sp.pinnedVersion && isNewerVersion(sp.pinnedVersion, version)) {
         return [
           slug,
           {
             update: true,
-            new_version: sp.availableVersion,
-            package: `${serverUrl}/api/v1/download/${plugin.slug}/${sp.availableVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
+            new_version: sp.pinnedVersion,
+            package: `${serverUrl}/api/v1/download/${plugin.slug}/${sp.pinnedVersion}?license_key=${licenseKey}&site_url=${encodeURIComponent(siteUrl)}`,
             sections: { changelog: "" },
           },
         ] as const;
