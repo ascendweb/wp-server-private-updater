@@ -48,10 +48,11 @@ model Plugin {
 
 model Site {
   id         String       @id @default(cuid())
-  url        String        @unique
+  url        String       @unique
   label      String?
   siteToken  String?
   pushUrl    String?
+  wpeAuth    String?
   status     String       @default("active")
   archivedAt DateTime?
   createdAt  DateTime     @default(now())

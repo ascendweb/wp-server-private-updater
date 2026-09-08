@@ -50,7 +50,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<SidebarMenuButton />}>
+              <DropdownMenuTrigger render={<SidebarMenuButton />} className="bg-secondary text-secondary-foreground">
                 <User />
                 <span>Account</span>
                 <ChevronUp className="ml-auto" />

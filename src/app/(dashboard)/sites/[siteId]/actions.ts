@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { createAndDispatchMany } from "@/lib/commands";
+import { createAndDispatchMany, reloadSiteHostCookies } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
@@ -114,4 +114,9 @@ export async function restoreSite(siteId: string) {
     where: { id: siteId },
     data: { status: SITE_STATUS_ACTIVE, archivedAt: null },
   });
+}
+
+export async function reloadHostCookies(siteId: string) {
+  await requireAuth();
+  return reloadSiteHostCookies(siteId);
 }
