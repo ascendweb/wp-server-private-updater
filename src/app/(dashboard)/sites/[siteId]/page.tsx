@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { SiteDetailClient } from "./site-detail-client";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { SITE_STATUS_ARCHIVED } from "@/lib/site-status";
+import { expireStaleCommands } from "@/lib/commands";
 
 export async function generateMetadata({
   params,
@@ -27,6 +28,8 @@ export default async function SiteDetailPage({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = await params;
+
+  await expireStaleCommands();
 
   const site = await prisma.site.findUnique({
     where: { id: siteId },

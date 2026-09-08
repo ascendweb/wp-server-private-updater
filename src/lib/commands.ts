@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import type { CommandType, Command } from "@prisma/client";
+import type { CommandType, Command, CommandStatus } from "@prisma/client";
 import { isSiteArchived } from "./site-status";
 
 export const SITE_COMMAND_TYPES = new Set<CommandType>(["refresh", "purge_cache"]);
@@ -65,6 +65,26 @@ export async function latestCommandsBySite(
   }
 
   return latestBySite;
+}
+
+export const COMMAND_TIMEOUT_MS = 60 * 60 * 1000;
+
+const STALE_COMMAND_STATUSES: CommandStatus[] = ["pending", "delivered", "in_progress"];
+
+/** Mark inflight commands older than one hour as failed. */
+export async function expireStaleCommands() {
+  const cutoff = new Date(Date.now() - COMMAND_TIMEOUT_MS);
+  await prisma.command.updateMany({
+    where: {
+      status: { in: STALE_COMMAND_STATUSES },
+      createdAt: { lt: cutoff },
+    },
+    data: {
+      status: "failed",
+      completedAt: new Date(),
+      result: JSON.stringify({ message: "Command timed out after 1 hour" }),
+    },
+  });
 }
 
 export async function createCommand(

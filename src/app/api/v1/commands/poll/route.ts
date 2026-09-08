@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { serializePendingCommand } from "@/lib/commands";
+import { serializePendingCommand, expireStaleCommands } from "@/lib/commands";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+
+  await expireStaleCommands();
 
   const commands = await prisma.command.findMany({
     where: {

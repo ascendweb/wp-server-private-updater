@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { serializeCommand } from "@/lib/commands";
+import { serializeCommand, expireStaleCommands } from "@/lib/commands";
 
 export async function GET(
   _req: Request,
@@ -21,6 +21,8 @@ export async function GET(
   if (!site) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
+
+  await expireStaleCommands();
 
   const commands = await prisma.command.findMany({
     where: { siteId },

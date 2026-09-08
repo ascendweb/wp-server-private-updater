@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite } from "@/lib/license";
 import { prisma } from "@/lib/db";
-import { serializePendingCommand } from "@/lib/commands";
+import { serializePendingCommand, expireStaleCommands } from "@/lib/commands";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
   }
 
   const site = await ensureSite(siteUrl, license.id);
+
+  await expireStaleCommands();
 
   const commands = await prisma.command.findMany({
     where: {

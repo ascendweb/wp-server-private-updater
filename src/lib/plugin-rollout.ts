@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { Command, CommandStatus, CommandType } from "@prisma/client";
 import { prisma } from "./db";
-import { serializeCommand } from "./commands";
+import { expireStaleCommands, serializeCommand } from "./commands";
 import { getLatestRelease } from "./github";
 import { activeSiteWhere } from "./site-status";
 import { sortBySiteUrl } from "./site-url";
@@ -37,9 +37,8 @@ async function loadPluginRecord(pluginId: string) {
 
 async function latestDisplayCommandsBySite(pluginSlug: string, siteIds: string[]) {
   const latestBySite = new Map<string, Command>();
-  const inflightBySite = new Map<string, Command>();
   if (siteIds.length === 0) {
-    return { latestBySite, inflightBySite };
+    return latestBySite;
   }
 
   const commands = await prisma.command.findMany({
@@ -54,12 +53,9 @@ async function latestDisplayCommandsBySite(pluginSlug: string, siteIds: string[]
     if (!latestBySite.has(command.siteId)) {
       latestBySite.set(command.siteId, command);
     }
-    if (isInflightStatus(command.status) && !inflightBySite.has(command.siteId)) {
-      inflightBySite.set(command.siteId, command);
-    }
   }
 
-  return { latestBySite, inflightBySite };
+  return latestBySite;
 }
 
 function isInflightStatus(status: CommandStatus) {
@@ -68,11 +64,10 @@ function isInflightStatus(status: CommandStatus) {
 
 function toRolloutSites(
   plugin: PluginWithSites,
-  latestBySite: Map<string, Command>,
-  inflightBySite: Map<string, Command>
+  latestBySite: Map<string, Command>
 ): PluginRolloutSite[] {
   return sortBySiteUrl(plugin.sitePlugins, (sp) => sp.site.url).map((sp) => {
-    const command = inflightBySite.get(sp.siteId) ?? latestBySite.get(sp.siteId) ?? null;
+    const command = latestBySite.get(sp.siteId) ?? null;
     return {
       id: sp.id,
       siteId: sp.site.id,
@@ -88,23 +83,18 @@ function toRolloutSites(
 }
 
 async function buildRollout(plugin: PluginWithSites): Promise<PluginRollout> {
+  await expireStaleCommands();
+
   const siteIds = plugin.sitePlugins.map((sp) => sp.siteId);
-  const [{ latestBySite, inflightBySite }, inflightCount] = await Promise.all([
-    latestDisplayCommandsBySite(plugin.slug, siteIds),
-    siteIds.length
-      ? prisma.command.count({
-          where: {
-            siteId: { in: siteIds },
-            status: { in: [...COMMAND_INFLIGHT_STATUSES] },
-            OR: [{ pluginSlug: plugin.slug }, { type: { in: SITE_COMMAND_TYPES } }],
-          },
-        })
-      : 0,
-  ]);
+  const latestBySite = await latestDisplayCommandsBySite(plugin.slug, siteIds);
+  const inflight = plugin.sitePlugins.some((sp) => {
+    const command = latestBySite.get(sp.siteId);
+    return command ? isInflightStatus(command.status) : false;
+  });
 
   return {
-    inflight: inflightCount > 0,
-    sites: toRolloutSites(plugin, latestBySite, inflightBySite),
+    inflight,
+    sites: toRolloutSites(plugin, latestBySite),
   };
 }
 
