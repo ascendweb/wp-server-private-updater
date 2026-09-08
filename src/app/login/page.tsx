@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { CheeseSprinkleBackground } from "@/components/cheese-sprinkle-background";
 
 type OAuthProviderInfo = { id: string; name: string };
 
@@ -76,8 +77,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <CheeseSprinkleBackground />
+      <Card className="relative z-10 w-full max-w-sm" size="lg">
         <CardHeader className="text-center">
           <img src="/branding/logo-full.svg" className="h-12 mx-auto" />
           <CardDescription>Sign in to manage your WordPress Sites</CardDescription>
