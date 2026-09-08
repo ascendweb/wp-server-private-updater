@@ -21,6 +21,9 @@ const fontMono = Fira_Code({
 export const metadata: Metadata = {
   title: "Taco WP",
   description: "A self-hosted centralized dashboard for WordPress sites.",
+  icons: {
+    icon: "/branding/favicon.png",
+  },
 };
 
 export default function RootLayout({
