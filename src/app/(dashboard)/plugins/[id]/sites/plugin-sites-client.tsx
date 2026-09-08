@@ -11,6 +11,7 @@ import { RefreshCw, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { forceUpdateSite, forceUpdateAll } from "./actions";
 import { formatSiteHost } from "@/lib/site-url";
+import { VisitSiteLink } from "@/components/visit-site-link";
 
 interface SiteEntry {
   siteId: string;
@@ -90,9 +91,12 @@ export function PluginSitesClient({ pluginSlug, sites }: { pluginSlug: string; s
               {sites.map((s) => (
                 <TableRow key={s.siteId}>
                   <TableCell>
-                    <Link href={`/sites/${s.siteId}`} className="font-medium hover:underline">
-                      {formatSiteHost(s.siteUrl)}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/sites/${s.siteId}`} className="font-medium hover:underline">
+                        {formatSiteHost(s.siteUrl)}
+                      </Link>
+                      <VisitSiteLink url={s.siteUrl} />
+                    </div>
                   </TableCell>
                   <TableCell>{s.installedVersion}</TableCell>
                   <TableCell>

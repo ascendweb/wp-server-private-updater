@@ -6,6 +6,7 @@ import { SetPageHeader } from "@/components/set-page-header";
 import { Badge } from "@/components/ui/badge";
 import { SiteDetailClient } from "./site-detail-client";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
+import { VisitSiteLink } from "@/components/visit-site-link";
 import { SITE_STATUS_ARCHIVED } from "@/lib/site-status";
 import { expireStaleCommands } from "@/lib/commands";
 
@@ -69,6 +70,7 @@ export default async function SiteDetailPage({
         </Link>
         <p className="text-muted-foreground mt-1 flex items-center gap-2">
           {formatSiteHost(site.url)}
+          <VisitSiteLink url={site.url} />
           {archived && <Badge variant="subtle">Archived</Badge>}
         </p>
       </div>

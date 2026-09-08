@@ -17,6 +17,7 @@ import {
   Check,
   BroomSparkles,
 } from "lucide-react";
+import { VisitSiteLink } from "@/components/visit-site-link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatSiteHost } from "@/lib/site-url";
@@ -474,9 +475,12 @@ export function PluginDetailClient({
                             />
                           </TableCell>
                           <TableCell className={`w-full ${CELL_PAD}`}>
-                            <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
-                              {formatSiteHost(sp.siteUrl)}
-                            </Link>
+                            <div className="flex items-center gap-2">
+                              <Link href={`/sites/${sp.siteId}`} className="font-medium hover:underline">
+                                {formatSiteHost(sp.siteUrl)}
+                              </Link>
+                              <VisitSiteLink url={sp.siteUrl} />
+                            </div>
                           </TableCell>
                           <TableCell className={CELL_PAD}>
                             <span className="text-sm">{sp.isActive ? "Active" : "Inactive"}</span>

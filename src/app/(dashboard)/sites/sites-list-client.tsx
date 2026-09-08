@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 import { sendSiteCommand } from "./actions";
 import { formatSiteHost } from "@/lib/site-url";
+import { VisitSiteLink } from "@/components/visit-site-link";
 
 interface SiteEntry {
   id: string;
@@ -92,7 +93,12 @@ export function SitesListClient({ archived }: { archived: boolean }) {
               <TableBody>
                 {sites.map((site) => (
                   <TableRow key={site.id} className="cursor-pointer" onClick={() => router.push(`/sites/${site.id}`)}>
-                    <TableCell className="font-medium">{formatSiteHost(site.url)}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {formatSiteHost(site.url)}
+                        <VisitSiteLink url={site.url} />
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{site.pluginCount > 0 ? site.pluginCount : "—"}</TableCell>
                     <TableCell>{site.licenseCount}</TableCell>
                     <TableCell>

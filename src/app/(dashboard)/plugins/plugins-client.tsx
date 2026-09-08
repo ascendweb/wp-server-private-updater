@@ -304,7 +304,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="size-6 bg-neutral-100 hover:bg-neutral-200"
                         onClick={(e) => {
                           e.stopPropagation();
                           refreshLatestVersion(plugin.slug);
@@ -312,7 +312,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                         disabled={refreshingSlug === plugin.slug}
                       >
                         <RotateCw
-                          className={`h-3 w-3 bg-neutral-100 hover:text-blue-500 ${refreshingSlug === plugin.slug ? "animate-spin" : ""}`}
+                          className={`h-3 w-3 ${refreshingSlug === plugin.slug ? "animate-spin" : ""}`}
                         />
                       </Button>
                     </TableCell>
