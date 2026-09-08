@@ -35,6 +35,7 @@ export async function dispatchPluginCommands(
     where: {
       pluginId: plugin.id,
       siteId: { in: siteIds },
+      site: { status: "active" },
     },
     include: {
       site: {

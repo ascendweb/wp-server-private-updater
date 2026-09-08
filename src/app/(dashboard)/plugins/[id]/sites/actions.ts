@@ -44,6 +44,7 @@ export async function forceUpdateAll(pluginSlug: string) {
     where: {
       pluginSlug,
       isLocked: false,
+      site: { status: "active" },
     },
     include: {
       site: {

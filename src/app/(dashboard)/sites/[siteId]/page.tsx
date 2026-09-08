@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { SetPageHeader } from "@/components/set-page-header";
+import { Badge } from "@/components/ui/badge";
 import { SiteDetailClient } from "./site-detail-client";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
+import { SITE_STATUS_ARCHIVED } from "@/lib/site-status";
 
 export default async function SiteDetailPage({
   params,
@@ -29,24 +31,29 @@ export default async function SiteDetailPage({
 
   if (!site) notFound();
 
+  const archived = site.status === SITE_STATUS_ARCHIVED;
+
   const allServerPlugins = await prisma.plugin.findMany({
     orderBy: { name: "asc" },
     select: { id: true, slug: true, name: true },
   });
 
   const installedSlugs = new Set(site.plugins.map((sp) => sp.pluginSlug));
-  const availableToInstall = allServerPlugins.filter(
-    (p) => !installedSlugs.has(p.slug)
-  );
+  const availableToInstall = archived
+    ? []
+    : allServerPlugins.filter((p) => !installedSlugs.has(p.slug));
 
   return (
     <div className="space-y-6">
       <SetPageHeader title={formatSiteTitle(site.url, site.label)} />
       <div>
-        <Link href="/sites" className="text-sm text-muted-foreground hover:underline">
-          &larr; Back to Sites
+        <Link href={archived ? "/sites/archived" : "/sites"} className="text-sm text-muted-foreground hover:underline">
+          {archived ? "\u2190 Back to Archived Sites" : "\u2190 Back to Sites"}
         </Link>
-        <p className="text-muted-foreground mt-1">{formatSiteHost(site.url)}</p>
+        <p className="text-muted-foreground mt-1 flex items-center gap-2">
+          {formatSiteHost(site.url)}
+          {archived && <Badge variant="subtle">Archived</Badge>}
+        </p>
       </div>
 
       <SiteDetailClient
@@ -55,6 +62,7 @@ export default async function SiteDetailPage({
           url: site.url,
           siteToken: !!site.siteToken,
           licenseCount: site._count.licenses,
+          archived,
         }}
         sitePlugins={site.plugins.map((sp) => ({
           id: sp.id,

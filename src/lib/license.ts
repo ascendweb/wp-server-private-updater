@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import type { Site } from "@prisma/client";
 import { siteUrlsMatch } from "./site-url";
+import { isSiteArchived } from "./site-status";
 
 export async function validateLicense(
   licenseKey: string,
@@ -15,12 +16,23 @@ export async function validateLicense(
     return null;
   }
 
+  if (isSiteArchived(license.site)) {
+    return null;
+  }
+
   const urlMatches =
     siteUrlsMatch(license.siteUrl, siteUrl) ||
     Boolean(license.site && siteUrlsMatch(license.site.url, siteUrl));
 
   if (!urlMatches) {
     return null;
+  }
+
+  if (!license.site) {
+    const matchingSite = await findSiteByEquivalentUrl(siteUrl, normalizeSiteUrl(siteUrl));
+    if (isSiteArchived(matchingSite)) {
+      return null;
+    }
   }
 
   const shouldUpdateCheckin =
@@ -60,6 +72,10 @@ export async function ensureSite(siteUrl: string, licenseId?: string): Promise<S
   }
 
   return site;
+}
+
+export async function findSiteByUrl(siteUrl: string): Promise<Site | null> {
+  return findSiteByEquivalentUrl(siteUrl, normalizeSiteUrl(siteUrl));
 }
 
 async function findSiteByEquivalentUrl(siteUrl: string, normalizedUrl: string): Promise<Site | null> {

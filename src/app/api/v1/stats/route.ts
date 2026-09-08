@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { activeSiteWhere, excludeArchivedSiteLicenses } from "@/lib/site-status";
 
 export async function GET() {
   const session = await auth();
@@ -18,16 +19,22 @@ export async function GET() {
     pendingCommands,
   ] = await Promise.all([
     prisma.plugin.count(),
-    prisma.license.count(),
-    prisma.license.count({ where: { status: "active" } }),
+    prisma.license.count({ where: excludeArchivedSiteLicenses }),
+    prisma.license.count({
+      where: {
+        status: "active",
+        ...excludeArchivedSiteLicenses,
+      },
+    }),
     prisma.license.count({
       where: {
         lastCheckAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        ...excludeArchivedSiteLicenses,
       },
     }),
-    prisma.site.count(),
-    prisma.site.count({ where: { siteToken: { not: null } } }),
-    prisma.command.count({ where: { status: "pending" } }),
+    prisma.site.count({ where: activeSiteWhere }),
+    prisma.site.count({ where: { ...activeSiteWhere, siteToken: { not: null } } }),
+    prisma.command.count({ where: { status: "pending", site: activeSiteWhere } }),
   ]);
 
   return NextResponse.json({

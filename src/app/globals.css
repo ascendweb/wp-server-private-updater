@@ -3,13 +3,13 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.9900 0 0);
+  --background: #f3f1ef;
   --foreground: oklch(0 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0 0 0);
-  --popover: oklch(0.9900 0 0);
+  --popover: oklch(99.107% 0.00011 271.152);
   --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0.5592 0.0852 207.6590);
+  --primary: #66a043;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.9461 0 0);
   --secondary-foreground: oklch(0 0 0);
@@ -31,8 +31,8 @@
   --sidebar-foreground: oklch(0 0 0);
   --sidebar-primary: oklch(0 0 0);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.9400 0 0);
-  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-accent: #66a043;
+  --sidebar-accent-foreground: oklch(100% 0.00011 271.152);
   --sidebar-border: oklch(0.9400 0 0);
   --sidebar-ring: oklch(0 0 0);
   --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;

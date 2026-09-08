@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import type { CommandType, Command } from "@prisma/client";
+import { isSiteArchived } from "./site-status";
 
 export const SITE_COMMAND_TYPES = new Set<CommandType>(["refresh", "purge_cache"]);
 
@@ -164,6 +165,11 @@ export async function createAndDispatchMany(
     return [];
   }
 
+  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
+  if (isSiteArchived(site)) {
+    throw new Error("Site is archived");
+  }
+
   const created: Command[] = [];
   for (const item of items) {
     created.push(
@@ -177,7 +183,6 @@ export async function createAndDispatchMany(
     );
   }
 
-  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   if (site.siteToken) {
     await pingSite(site.url, site.siteToken);
   }

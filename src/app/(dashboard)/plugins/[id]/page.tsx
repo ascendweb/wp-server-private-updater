@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { latestCommandsBySite, serializeCommand } from "@/lib/commands";
 import { SetPageHeader } from "@/components/set-page-header";
 import { PluginDetailClient } from "./plugin-detail-client";
+import { activeSiteWhere } from "@/lib/site-status";
 
 export default async function PluginDetailPage({
   params,
@@ -16,6 +17,7 @@ export default async function PluginDetailPage({
     where: { id },
     include: {
       sitePlugins: {
+        where: { site: activeSiteWhere },
         include: {
           site: { select: { id: true, url: true, label: true } },
         },

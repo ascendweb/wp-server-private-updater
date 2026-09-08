@@ -47,16 +47,20 @@ model Plugin {
 }
 
 model Site {
-  id        String       @id @default(cuid())
-  url       String       @unique
-  label     String?
-  siteToken String?
-  pushUrl   String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  licenses            License[]
-  plugins             SitePlugin[]
-  commands            Command[]
+  id         String       @id @default(cuid())
+  url        String        @unique
+  label      String?
+  siteToken  String?
+  pushUrl    String?
+  status     String       @default("active")
+  archivedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  licenses   License[]
+  plugins    SitePlugin[]
+  commands   Command[]
+
+  @@index([status])
 }
 
 model License {

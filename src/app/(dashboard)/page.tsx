@@ -6,19 +6,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Puzzle, KeyRound, Globe, Activity, Terminal, Shield } from "lucide-react";
 import { formatSiteHost } from "@/lib/site-url";
+import { activeSiteWhere, excludeArchivedSiteLicenses } from "@/lib/site-status";
 
 export default async function DashboardPage() {
   const [pluginCount, activeLicenses, recentCheckins, siteCount, sitesWithToken, recentCommands] = await Promise.all([
     prisma.plugin.count(),
-    prisma.license.count({ where: { status: "active" } }),
+    prisma.license.count({
+      where: {
+        status: "active",
+        ...excludeArchivedSiteLicenses,
+      },
+    }),
     prisma.license.count({
       where: {
         lastCheckAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        ...excludeArchivedSiteLicenses,
       },
     }),
-    prisma.site.count(),
-    prisma.site.count({ where: { siteToken: { not: null } } }),
+    prisma.site.count({ where: activeSiteWhere }),
+    prisma.site.count({ where: { ...activeSiteWhere, siteToken: { not: null } } }),
     prisma.command.findMany({
+      where: { site: activeSiteWhere },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { site: { select: { url: true, id: true } } },

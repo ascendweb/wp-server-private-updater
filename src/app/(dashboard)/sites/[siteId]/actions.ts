@@ -6,6 +6,7 @@ import { createAndDispatchMany } from "@/lib/commands";
 import { getLatestRelease } from "@/lib/github";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
+import { SITE_STATUS_ACTIVE, SITE_STATUS_ARCHIVED } from "@/lib/site-status";
 
 async function requireAuth() {
   const session = await auth();
@@ -99,7 +100,18 @@ export async function getReleaseVersions(pluginSlug: string) {
   }
 }
 
-export async function deleteSite(siteId: string) {
+export async function archiveSite(siteId: string) {
   await requireAuth();
-  await prisma.site.delete({ where: { id: siteId } });
+  await prisma.site.update({
+    where: { id: siteId },
+    data: { status: SITE_STATUS_ARCHIVED, archivedAt: new Date() },
+  });
+}
+
+export async function restoreSite(siteId: string) {
+  await requireAuth();
+  await prisma.site.update({
+    where: { id: siteId },
+    data: { status: SITE_STATUS_ACTIVE, archivedAt: null },
+  });
 }

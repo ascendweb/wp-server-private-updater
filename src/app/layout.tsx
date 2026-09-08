@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { DM_Sans, Merriweather, Fira_Code } from "next/font/google"; import { Providers } from "@/components/providers";
+import { DM_Sans, Merriweather, Fira_Code } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const fontSans = DM_Sans({
@@ -16,6 +17,7 @@ const fontMono = Fira_Code({
   subsets: ["latin"],
   variable: "--font-mono",
 });
+
 export const metadata: Metadata = {
   title: "WP Private Updater",
   description: "Self-hosted WordPress plugin update server",

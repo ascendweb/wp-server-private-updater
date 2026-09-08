@@ -8,10 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, Trash2, ArrowUp, RotateCw, Eraser } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, Archive, ArchiveRestore, ArrowUp, RotateCw, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
-import { sendCommand, deleteSite, bumpSitePlugin } from "./actions";
+import { sendCommand, archiveSite, restoreSite, bumpSitePlugin } from "./actions";
 import { sendSiteCommand } from "../actions";
 import { formatSiteHost } from "@/lib/site-url";
 
@@ -49,6 +49,7 @@ interface SiteInfo {
   url: string;
   siteToken: boolean;
   licenseCount: number;
+  archived: boolean;
 }
 
 const INFLIGHT_STATUSES = new Set(["pending", "delivered", "in_progress"]);
@@ -56,7 +57,7 @@ const INFLIGHT_STATUSES = new Set(["pending", "delivered", "in_progress"]);
 export function SiteDetailClient({ site, sitePlugins, commands, availableToInstall }: { site: SiteInfo; sitePlugins: SitePlugin[]; commands: CommandEntry[]; availableToInstall: AvailablePlugin[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [bumpingId, setBumpingId] = useState<string | null>(null);
   const [selectedCommand, setSelectedCommand] = useState<CommandEntry | null>(null);
   const [commandLog, setCommandLog] = useState(commands);
@@ -82,7 +83,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
             return;
           }
         }
-      } catch {}
+      } catch { }
       if (!cancelled) {
         timer = setTimeout(poll, 8000);
       }
@@ -147,31 +148,60 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
     setBusy(null);
   }
 
-  async function handleDeleteSite() {
-    if (!confirm(`Delete site "${formatSiteHost(site.url)}" and all its licenses and data? This cannot be undone.`)) return;
-    setDeleting(true);
+  async function handleArchiveSite() {
+    if (!confirm(`Archive site "${formatSiteHost(site.url)}"? Its licenses will stop working. You can restore it later.`)) return;
+    setArchiving(true);
     try {
-      await deleteSite(site.id);
-      toast.success("Site deleted");
+      await archiveSite(site.id);
+      toast.success("Site archived");
       router.push("/sites");
     } catch {
-      toast.error("Failed to delete site");
-      setDeleting(false);
+      toast.error("Failed to archive site");
+      setArchiving(false);
     }
+  }
+
+  async function handleRestoreSite() {
+    setArchiving(true);
+    try {
+      await restoreSite(site.id);
+      toast.success("Site restored");
+      router.refresh();
+    } catch {
+      toast.error("Failed to restore site");
+    }
+    setArchiving(false);
   }
 
   return (
     <>
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={() => handleSiteCommand("refresh")} disabled={busy === "refresh"}>
-          <RotateCw className={`mr-2 h-4 w-4 ${busy === "refresh" ? "animate-spin" : ""}`} />
-          Refresh inventory
-        </Button>
-        <Button variant="outline" onClick={() => handleSiteCommand("purge_cache")} disabled={busy === "purge_cache"}>
-          <Eraser className="mr-2 h-4 w-4" />
-          Purge caches
-        </Button>
-      </div>
+      {site.archived ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Archived</CardTitle>
+            <CardDescription>
+              This site is archived. License keys are not valid until it is restored.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleRestoreSite} disabled={archiving}>
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {archiving ? "Restoring..." : "Restore Site"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={() => handleSiteCommand("refresh")} disabled={busy === "refresh"}>
+            <RotateCw className={`mr-2 h-4 w-4 ${busy === "refresh" ? "animate-spin" : ""}`} />
+            Refresh inventory
+          </Button>
+          <Button variant="outline" onClick={() => handleSiteCommand("purge_cache")} disabled={busy === "purge_cache"}>
+            <Eraser className="mr-2 h-4 w-4" />
+            Purge caches
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -249,7 +279,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                                   v{avail}
                                 </span>
                               )}
-                              {differs && !sp.autoSync && (
+                              {differs && !sp.autoSync && !site.archived && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -278,7 +308,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(sp.lastReportedAt).toLocaleString()}</TableCell>
                         <TableCell>
-                          {sp.isManaged && (
+                          {sp.isManaged && !site.archived && (
                             <DropdownMenu>
                               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
                                 <MoreHorizontal className="h-4 w-4" />
@@ -439,18 +469,22 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
         </DialogContent>
       </Dialog>
 
-      <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>Permanently delete this site and all its associated data.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive" onClick={handleDeleteSite} disabled={deleting}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            {deleting ? "Deleting..." : "Delete Site"}
-          </Button>
-        </CardContent>
-      </Card>
+      {!site.archived && (
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Archive Site</CardTitle>
+            <CardDescription>
+              Archiving hides this site and stops its license keys from working. Installed plugins and history are kept so you can restore it later.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="destructive" onClick={handleArchiveSite} disabled={archiving}>
+              <Archive className="mr-2 h-4 w-4" />
+              {archiving ? "Archiving..." : "Archive Site"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }

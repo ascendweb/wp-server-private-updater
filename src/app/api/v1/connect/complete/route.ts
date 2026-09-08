@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { jwtVerify, SignJWT } from "jose";
 import { prisma } from "@/lib/db";
 import { ensureSite, normalizeSiteUrl } from "@/lib/license";
+import { isSiteArchived } from "@/lib/site-status";
 
 const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || "secret");
 
@@ -35,6 +36,12 @@ export async function POST(req: NextRequest) {
   const siteToken = crypto.randomUUID();
 
   const site = await ensureSite(payload.site_url);
+  if (isSiteArchived(site)) {
+    return NextResponse.json(
+      { error: "This site is archived. Restore it before reconnecting." },
+      { status: 403 }
+    );
+  }
   await prisma.site.update({
     where: { id: site.id },
     data: { siteToken },

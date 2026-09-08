@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { normalizeSiteUrl } from "@/lib/license";
+import { normalizeSiteUrl, findSiteByUrl } from "@/lib/license";
+import { excludeArchivedSiteLicenses, isSiteArchived } from "@/lib/site-status";
 
 export async function GET() {
   const session = await auth();
@@ -10,6 +11,7 @@ export async function GET() {
   }
 
   const licenses = await prisma.license.findMany({
+    where: excludeArchivedSiteLicenses,
     orderBy: { createdAt: "desc" },
   });
 
@@ -27,6 +29,14 @@ export async function POST(req: NextRequest) {
 
   if (!siteUrl) {
     return NextResponse.json({ error: "Missing siteUrl" }, { status: 400 });
+  }
+
+  const existingSite = await findSiteByUrl(siteUrl);
+  if (isSiteArchived(existingSite)) {
+    return NextResponse.json(
+      { error: "This site is archived. Restore it before creating a new license." },
+      { status: 400 }
+    );
   }
 
   const license = await prisma.license.create({
