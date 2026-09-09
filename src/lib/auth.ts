@@ -11,7 +11,7 @@ import { envFlagEnabled } from "./env-flag";
 const githubClientId = process.env.GITHUB_AUTH_CLIENT_ID;
 const githubClientSecret = process.env.GITHUB_AUTH_CLIENT_SECRET;
 const githubAllowedOrg = process.env.GITHUB_AUTH_ALLOWED_ORG?.trim().replace(/^@/, "");
-const githubLoginEnabled = envFlagEnabled(process.env.GITHUB_AUTH_ENABLED);
+const githubLoginEnabled = envFlagEnabled("GITHUB_AUTH_ENABLED");
 const githubProvider =
   githubLoginEnabled && githubClientId && githubClientSecret && githubAllowedOrg
     ? [
@@ -95,7 +95,7 @@ async function checkGithubOrgMembership(
 const googleClientId = process.env.GOOGLE_AUTH_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_AUTH_CLIENT_SECRET;
 const googleAllowedDomain = process.env.GOOGLE_AUTH_ALLOWED_DOMAIN?.trim().toLowerCase();
-const googleLoginEnabled = envFlagEnabled(process.env.GOOGLE_AUTH_ENABLED);
+const googleLoginEnabled = envFlagEnabled("GOOGLE_AUTH_ENABLED");
 const googleProvider =
   googleLoginEnabled && googleClientId && googleClientSecret
     ? [
