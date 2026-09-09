@@ -13,10 +13,10 @@ import { envFlagEnabled } from "@/lib/env-flag";
 type OAuthProviderInfo = { id: string; name: string };
 
 const enabledOAuthProviders: OAuthProviderInfo[] = [
-  ...(envFlagEnabled(process.env.NEXT_PUBLIC_GITHUB_AUTH_ENABLED)
+  ...(envFlagEnabled(process.env.GITHUB_AUTH_ENABLED)
     ? [{ id: "github", name: "GitHub" }]
     : []),
-  ...(envFlagEnabled(process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED)
+  ...(envFlagEnabled(process.env.GOOGLE_AUTH_ENABLED)
     ? [{ id: "google", name: "Google" }]
     : []),
 ];

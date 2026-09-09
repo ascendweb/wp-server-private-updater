@@ -11,18 +11,18 @@ import { envFlagEnabled } from "./env-flag";
 const githubClientId = process.env.GITHUB_AUTH_CLIENT_ID;
 const githubClientSecret = process.env.GITHUB_AUTH_CLIENT_SECRET;
 const githubAllowedOrg = process.env.GITHUB_AUTH_ALLOWED_ORG?.trim().replace(/^@/, "");
-const githubLoginEnabled = envFlagEnabled(process.env.NEXT_PUBLIC_GITHUB_AUTH_ENABLED);
+const githubLoginEnabled = envFlagEnabled(process.env.GITHUB_AUTH_ENABLED);
 const githubProvider =
   githubLoginEnabled && githubClientId && githubClientSecret && githubAllowedOrg
     ? [
-        GitHub({
-          clientId: githubClientId,
-          clientSecret: githubClientSecret,
-          authorization: {
-            params: { scope: "read:user user:email read:org" },
-          },
-        }),
-      ]
+      GitHub({
+        clientId: githubClientId,
+        clientSecret: githubClientSecret,
+        authorization: {
+          params: { scope: "read:user user:email read:org" },
+        },
+      }),
+    ]
     : [];
 
 type GithubOrgCheckResult =
@@ -95,20 +95,20 @@ async function checkGithubOrgMembership(
 const googleClientId = process.env.GOOGLE_AUTH_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_AUTH_CLIENT_SECRET;
 const googleAllowedDomain = process.env.GOOGLE_AUTH_ALLOWED_DOMAIN?.trim().toLowerCase();
-const googleLoginEnabled = envFlagEnabled(process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED);
+const googleLoginEnabled = envFlagEnabled(process.env.GOOGLE_AUTH_ENABLED);
 const googleProvider =
   googleLoginEnabled && googleClientId && googleClientSecret
     ? [
-        Google({
-          clientId: googleClientId,
-          clientSecret: googleClientSecret,
-          authorization: {
-            params: {
-              ...(googleAllowedDomain ? { hd: googleAllowedDomain } : {}),
-            },
+      Google({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        authorization: {
+          params: {
+            ...(googleAllowedDomain ? { hd: googleAllowedDomain } : {}),
           },
-        }),
-      ]
+        },
+      }),
+    ]
     : [];
 
 async function upsertOAuthUser(
