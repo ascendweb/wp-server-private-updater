@@ -1,49 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProviders, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { CheeseSprinkleBackground } from "@/components/cheese-sprinkle-background";
+import { envFlagEnabled } from "@/lib/env-flag";
 
 type OAuthProviderInfo = { id: string; name: string };
 
-const OAUTH_PROVIDERS: Record<string, { label: string }> = {
-  github: { label: "GitHub" },
-  google: { label: "Google" },
-};
+const enabledOAuthProviders: OAuthProviderInfo[] = [
+  ...(envFlagEnabled(process.env.NEXT_PUBLIC_GITHUB_AUTH_ENABLED)
+    ? [{ id: "github", name: "GitHub" }]
+    : []),
+  ...(envFlagEnabled(process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED)
+    ? [{ id: "google", name: "Google" }]
+    : []),
+];
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
-  const [enabledOAuthProviders, setEnabledOAuthProviders] = useState<OAuthProviderInfo[]>([]);
   const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
   const oauthErrorMessage = getOauthErrorMessage(oauthErrorCode);
-
-  useEffect(() => {
-    let mounted = true;
-    getProviders()
-      .then((providers) => {
-        if (!mounted || !providers) return;
-        const oauth = Object.values(providers)
-          .filter((p) => p.id !== "credentials" && p.id in OAUTH_PROVIDERS)
-          .map((p) => ({ id: p.id, name: OAUTH_PROVIDERS[p.id]?.label ?? p.name }));
-        setEnabledOAuthProviders(oauth);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setEnabledOAuthProviders([]);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

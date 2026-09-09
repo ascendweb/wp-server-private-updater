@@ -88,7 +88,7 @@ See [`.env.example`](.env.example) for all available configuration. Key groups:
 - **Database** -- `DATABASE_URL`
 - **Server** -- `SERVER_URL` (public-facing base URL for download links and the connect flow)
 - **NextAuth** -- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
-- **GitHub OAuth** (optional) -- `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`
-- **Google OAuth** (optional) -- `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`, `GOOGLE_AUTH_ALLOWED_DOMAIN`
+- **GitHub OAuth** (optional) -- `NEXT_PUBLIC_GITHUB_AUTH_ENABLED`, `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`
+- **Google OAuth** (optional) -- `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`, `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`, `GOOGLE_AUTH_ALLOWED_DOMAIN`
 - **GitHub App** (for fetching private releases) -- `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`
 - **Admin seed** -- `ADMIN_EMAIL`, `ADMIN_PASSWORD`
