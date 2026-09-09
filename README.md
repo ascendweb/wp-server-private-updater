@@ -32,7 +32,7 @@ All admin routes require an authenticated session and return `401 Unauthorized` 
 | POST   | `/api/v1/plugins`     | Create a new plugin from slug, name, and GitHub repo          |
 | GET    | `/api/v1/plugins/:id` | Get a single plugin with its licenses                         |
 | PATCH  | `/api/v1/plugins/:id` | Update plugin fields (name, description, repo, asset pattern) |
-| DELETE | `/api/v1/plugins/:id` | Delete a plugin and invalidate its release cache              |
+| DELETE | `/api/v1/plugins/:id` | Delete a plugin                                               |
 
 ### Licenses (admin)
 
@@ -57,7 +57,13 @@ All admin routes require an authenticated session and return `401 Unauthorized` 
 
 | Method | Path                     | Description                              |
 | ------ | ------------------------ | ---------------------------------------- |
-| GET    | `/api/v1/releases/:slug` | Fetch latest GitHub release for a plugin |
+| GET    | `/api/v1/releases/:slug` | Return the stored latest GitHub release (`?refresh=1` re-fetches from GitHub) |
+
+### GitHub App (public)
+
+| Method | Path                        | Description                                              |
+| ------ | --------------------------- | -------------------------------------------------------- |
+| POST   | `/api/v1/github/webhooks`   | GitHub App webhook: persist latest release on `Plugin`   |
 
 ### Stats (admin)
 
@@ -90,5 +96,5 @@ See [`.env.example`](.env.example) for all available configuration. Key groups:
 - **NextAuth** -- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
 - **GitHub OAuth** (optional) -- `GITHUB_AUTH_ENABLED`, `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`
 - **Google OAuth** (optional) -- `GOOGLE_AUTH_ENABLED`, `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`, `GOOGLE_AUTH_ALLOWED_DOMAIN`
-- **GitHub App** (for fetching private releases) -- `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`
+- **GitHub App** (for fetching private releases and receiving new-release webhooks) -- `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_WEBHOOK_SECRET`
 - **Admin seed** -- `ADMIN_EMAIL`, `ADMIN_PASSWORD`

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getLatestRelease } from "@/lib/github";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
+import { isGitHubAppConfigured } from "@/lib/github";
 import { validateLicense } from "@/lib/license";
 import { getServerOrigin } from "@/lib/utils";
 
@@ -26,11 +27,7 @@ export async function GET(req: NextRequest) {
   });
 
   const serverUrl = getServerOrigin(req);
-  const hasGithubAppConfig = Boolean(
-    process.env.GITHUB_APP_ID &&
-      process.env.GITHUB_APP_PRIVATE_KEY &&
-      process.env.GITHUB_APP_INSTALLATION_ID
-  );
+  const hasGithubAppConfig = isGitHubAppConfigured();
 
   const availablePlugins = await Promise.all(
     plugins.map(async (plugin) => {
@@ -47,7 +44,7 @@ export async function GET(req: NextRequest) {
       if (!hasGithubAppConfig) return base;
 
       try {
-        const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+        const release = await getPluginLatestRelease(plugin);
         if (!release) return base;
 
         return {

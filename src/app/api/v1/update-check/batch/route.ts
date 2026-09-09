@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite, ensureSiteToken } from "@/lib/license";
-import { getLatestRelease } from "@/lib/github";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
+import { isNewerVersion } from "@/lib/plugin-version";
 import { prisma } from "@/lib/db";
 import { getServerOrigin } from "@/lib/utils";
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (sp.autoSync) {
-        const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
+        const release = await getPluginLatestRelease(plugin);
         if (!release) return [slug, { error: "No releases found" }] as const;
 
         if (!isNewerVersion(release.version, version)) {
@@ -116,17 +117,4 @@ export async function POST(req: NextRequest) {
     site_token: siteToken,
     results: Object.fromEntries(resultsEntries),
   });
-}
-
-function isNewerVersion(latest: string, current: string): boolean {
-  const l = latest.split(".").map(Number);
-  const c = current.split(".").map(Number);
-  const len = Math.max(l.length, c.length);
-  for (let i = 0; i < len; i++) {
-    const a = l[i] || 0;
-    const b = c[i] || 0;
-    if (a > b) return true;
-    if (a < b) return false;
-  }
-  return false;
 }

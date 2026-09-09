@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const serverUrl = getServerOriginFromEnv("");
   const githubAppId = process.env.GITHUB_APP_ID || "";
   const githubInstallationId = process.env.GITHUB_APP_INSTALLATION_ID || "";
+  const githubWebhookSecret = process.env.GITHUB_APP_WEBHOOK_SECRET || "";
+  const githubWebhookUrl = `${serverUrl}/api/v1/github/webhooks`;
 
   return (
     <div className="space-y-6">
@@ -93,6 +95,29 @@ export default function SettingsPage() {
                   </Badge>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>Webhook URL</Label>
+                <Input value={githubWebhookUrl} readOnly />
+                <p className="text-xs text-muted-foreground">
+                  Set this as the GitHub App webhook URL and subscribe to the Release event.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Webhook Secret</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={githubWebhookSecret ? "Configured" : "Not configured"}
+                    readOnly
+                  />
+                  <Badge
+                    variant={
+                      githubWebhookSecret ? "default" : "destructive"
+                    }
+                  >
+                    {githubWebhookSecret ? "Set" : "Missing"}
+                  </Badge>
+                </div>
+              </div>
               <div className="rounded-md bg-muted p-4 text-sm">
                 <p className="font-medium mb-2">Setup Instructions</p>
                 <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
@@ -103,11 +128,19 @@ export default function SettingsPage() {
                   <li>
                     Grant <code>contents:read</code> permission
                   </li>
+                  <li>
+                    Subscribe to the <code>Release</code> webhook event
+                  </li>
+                  <li>
+                    Set the webhook URL to <code>{githubWebhookUrl}</code> and
+                    copy the webhook secret
+                  </li>
                   <li>Install the app on your org/repos</li>
                   <li>
                     Set <code>GITHUB_APP_ID</code>,{" "}
-                    <code>GITHUB_APP_PRIVATE_KEY</code>, and{" "}
-                    <code>GITHUB_APP_INSTALLATION_ID</code> in your environment
+                    <code>GITHUB_APP_PRIVATE_KEY</code>,{" "}
+                    <code>GITHUB_APP_INSTALLATION_ID</code>, and{" "}
+                    <code>GITHUB_APP_WEBHOOK_SECRET</code> in your environment
                   </li>
                 </ol>
               </div>

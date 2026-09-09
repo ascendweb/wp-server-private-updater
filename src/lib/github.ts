@@ -1,5 +1,11 @@
 import { App } from "octokit";
-import { releaseCache, type ReleaseInfo } from "./cache";
+import { stripVersionPrefix } from "./plugin-version";
+
+export type GitHubRelease = {
+  version: string;
+  changelog: string;
+  publishedAt: string | null;
+};
 
 let appInstance: App | null = null;
 
@@ -29,9 +35,15 @@ export function parseGitHubRepoUrl(urlInput: string): { owner: string; repo: str
   }
 }
 
-function getApp(): App {
-  if (appInstance) return appInstance;
+export function isGitHubAppConfigured() {
+  return Boolean(
+    process.env.GITHUB_APP_ID &&
+      process.env.GITHUB_APP_PRIVATE_KEY &&
+      process.env.GITHUB_APP_INSTALLATION_ID
+  );
+}
 
+function githubAppCredentials() {
   const appId = process.env.GITHUB_APP_ID;
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
 
@@ -44,11 +56,21 @@ function getApp(): App {
     );
   }
 
-  appInstance = new App({
-    appId,
-    privateKey: privateKey.replace(/\\n/g, "\n"),
-  });
+  return { appId, privateKey: privateKey.replace(/\\n/g, "\n") };
+}
 
+export function createGitHubApp(webhookSecret?: string) {
+  const { appId, privateKey } = githubAppCredentials();
+  return new App({
+    appId,
+    privateKey,
+    ...(webhookSecret ? { webhooks: { secret: webhookSecret } } : {}),
+  });
+}
+
+function getApp(): App {
+  if (appInstance) return appInstance;
+  appInstance = createGitHubApp();
   return appInstance;
 }
 
@@ -92,23 +114,16 @@ function buildAssetNameCandidates(slug: string, version: string, pattern?: strin
   return [...candidates].filter(Boolean);
 }
 
-export async function getLatestRelease(owner: string, repo: string, pluginSlug: string): Promise<ReleaseInfo | null> {
-  const cached = releaseCache.get(pluginSlug);
-  if (cached) return cached;
-
+export async function fetchLatestReleaseFromGitHub(owner: string, repo: string): Promise<GitHubRelease | null> {
   try {
     const octokit = await getInstallationOctokit();
     const { data } = await octokit.rest.repos.getLatestRelease({ owner, repo });
 
-    const info: ReleaseInfo = {
-      version: data.tag_name.replace(/^v/, ""),
+    return {
+      version: stripVersionPrefix(data.tag_name),
       changelog: data.body || "",
       publishedAt: data.published_at || data.created_at,
-      zipDownloadUrl: data.zipball_url || "",
     };
-
-    releaseCache.set(pluginSlug, info);
-    return info;
   } catch (err: unknown) {
     if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 404) {
       return null;

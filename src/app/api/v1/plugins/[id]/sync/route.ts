@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getLatestRelease } from "@/lib/github";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
 import { activeSiteWhere } from "@/lib/site-status";
 
 export async function POST(
@@ -24,7 +24,7 @@ export async function POST(
 
   let syncVersion = version;
   if (!syncVersion) {
-    const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+    const release = await getPluginLatestRelease(plugin);
     if (!release) {
       return NextResponse.json({ error: "No release found on GitHub" }, { status: 404 });
     }

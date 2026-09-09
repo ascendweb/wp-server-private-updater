@@ -24,6 +24,7 @@ services:
       GITHUB_APP_ID: ""
       GITHUB_APP_PRIVATE_KEY: ""
       GITHUB_APP_INSTALLATION_ID: ""
+      GITHUB_APP_WEBHOOK_SECRET: ""
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: changeme
     ports:

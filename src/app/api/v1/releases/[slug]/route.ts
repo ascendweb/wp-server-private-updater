@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getLatestRelease } from "@/lib/github";
-import { releaseCache } from "@/lib/cache";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
 
 export async function GET(
   req: NextRequest,
@@ -14,19 +13,22 @@ export async function GET(
   }
 
   const { slug } = await params;
-  if (req.nextUrl.searchParams.get("refresh") === "1") {
-    releaseCache.invalidate(slug);
-  }
   const plugin = await prisma.plugin.findUnique({ where: { slug } });
 
   if (!plugin) {
     return NextResponse.json({ error: "Plugin not found" }, { status: 404 });
   }
 
-  const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, slug);
-  if (!release) {
-    return NextResponse.json({ error: "No releases found" }, { status: 404 });
-  }
+  try {
+    const release = await getPluginLatestRelease(plugin, {
+      refresh: req.nextUrl.searchParams.get("refresh") === "1",
+    });
+    if (!release) {
+      return NextResponse.json({ error: "No releases found" }, { status: 404 });
+    }
 
-  return NextResponse.json(release);
+    return NextResponse.json(release);
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch latest release" }, { status: 502 });
+  }
 }

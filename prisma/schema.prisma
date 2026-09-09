@@ -39,6 +39,10 @@ model Plugin {
   releaseAssetPattern String       @default("{slug}-v{version}.zip")
   testedWp            String?      @default("6.7")
   requiresPhp         String?      @default("8.0")
+  latestVersion       String?
+  latestChangelog     String?
+  latestPublishedAt   DateTime?
+  latestSyncedAt      DateTime?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   sitePlugins         SitePlugin[]

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch, RotateCw } from "lucid
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 
-interface Plugin {
+export type PluginListItem = {
   id: string;
   slug: string;
   name: string;
@@ -49,19 +49,17 @@ interface Plugin {
   githubRepo: string;
   releaseAssetPattern: string;
   createdAt: Date;
-  _count: { sitePlugins: number };
-}
+  latestVersion: string | null;
+  sites: number;
+  needsUpdate: number;
+  outdated: number;
+};
 
-interface ReleaseInfo {
-  version: string;
-}
-
-export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) {
+export function PluginsClient({ initialPlugins }: { initialPlugins: PluginListItem[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [editPlugin, setEditPlugin] = useState<Plugin | null>(null);
+  const [editPlugin, setEditPlugin] = useState<PluginListItem | null>(null);
   const [loading, setLoading] = useState(false);
-  const [latestVersions, setLatestVersions] = useState<Record<string, string>>({});
   const [refreshingSlug, setRefreshingSlug] = useState<string | null>(null);
 
   usePageHeader(
@@ -71,50 +69,18 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
     </Button>
   );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadLatestVersions() {
-      const entries = await Promise.all(
-        initialPlugins.map(async (plugin) => {
-          try {
-            const res = await fetch(`/api/v1/releases/${plugin.slug}`);
-            if (!res.ok) return [plugin.slug, "N/A"] as const;
-            const release = (await res.json()) as ReleaseInfo;
-            return [plugin.slug, release.version || "N/A"] as const;
-          } catch {
-            return [plugin.slug, "N/A"] as const;
-          }
-        })
-      );
-
-      if (!cancelled) {
-        setLatestVersions(Object.fromEntries(entries));
-      }
-    }
-
-    loadLatestVersions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialPlugins]);
-
   async function refreshLatestVersion(slug: string) {
     setRefreshingSlug(slug);
     try {
       const res = await fetch(`/api/v1/releases/${slug}?refresh=1`);
       if (!res.ok) {
-        setLatestVersions((prev) => ({ ...prev, [slug]: "N/A" }));
         toast.error("Failed to refresh latest version");
         return;
       }
 
-      const release = (await res.json()) as ReleaseInfo;
-      setLatestVersions((prev) => ({ ...prev, [slug]: release.version || "N/A" }));
       toast.success("Latest version refreshed");
+      router.refresh();
     } catch {
-      setLatestVersions((prev) => ({ ...prev, [slug]: "N/A" }));
       toast.error("Failed to refresh latest version");
     } finally {
       setRefreshingSlug(null);
@@ -272,6 +238,9 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                 <TableRow>
                   <TableHead className="w-full">Plugin</TableHead>
                   <TableHead>Slug</TableHead>
+                  <TableHead className="text-right">Sites</TableHead>
+                  <TableHead className="text-right">Updates</TableHead>
+                  <TableHead className="text-right">Outdated</TableHead>
                   <TableHead>Latest</TableHead>
                   <TableHead></TableHead>
                   <TableHead>GitHub</TableHead>
@@ -296,8 +265,23 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: Plugin[] }) 
                     <TableCell>
                       <Badge variant="secondary">{plugin.slug}</Badge>
                     </TableCell>
+                    <TableCell className="text-right tabular-nums">{plugin.sites}</TableCell>
+                    <TableCell className="text-right">
+                      {plugin.needsUpdate > 0 ? (
+                        <Badge variant="warn">{plugin.needsUpdate}</Badge>
+                      ) : (
+                        <span className="tabular-nums text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {plugin.outdated > 0 ? (
+                        <Badge variant="info">{plugin.outdated}</Badge>
+                      ) : (
+                        <span className="tabular-nums text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
                     <TableCell>
-                      <span className="min-w-[10ch]">{latestVersions[plugin.slug] ?? "..."}</span>
+                      <span className="min-w-[10ch]">{plugin.latestVersion ?? "N/A"}</span>
                     </TableCell>
                     <TableCell>
                       <Button

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { releaseCache } from "@/lib/cache";
 import { parseGitHubRepoUrl } from "@/lib/github";
+import { syncPluginLatestRelease } from "@/lib/plugin-release";
 
 export async function GET(
   _req: NextRequest,
@@ -35,6 +35,11 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const existing = await prisma.plugin.findUnique({ where: { id } });
+  if (!existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const body = await req.json();
   const updateData: {
     name?: string;
@@ -68,11 +73,24 @@ export async function PATCH(
   }
 
   try {
-    const plugin = await prisma.plugin.update({
+    let plugin = await prisma.plugin.update({
       where: { id },
       data: updateData,
     });
-    releaseCache.invalidate(plugin.slug);
+
+    const repoChanged =
+      (updateData.githubOwner && updateData.githubOwner !== existing.githubOwner) ||
+      (updateData.githubRepo && updateData.githubRepo !== existing.githubRepo);
+
+    if (repoChanged) {
+      try {
+        await syncPluginLatestRelease(plugin);
+        plugin = await prisma.plugin.findUniqueOrThrow({ where: { id: plugin.id } });
+      } catch {
+        // Keep the plugin even if GitHub is unreachable.
+      }
+    }
+
     return NextResponse.json(plugin);
   } catch {
     return NextResponse.json({ error: "Not found or conflict" }, { status: 404 });
@@ -91,8 +109,7 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    const plugin = await prisma.plugin.delete({ where: { id } });
-    releaseCache.invalidate(plugin.slug);
+    await prisma.plugin.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

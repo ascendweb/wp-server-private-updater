@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatchMany, reloadSiteHostCookies } from "@/lib/commands";
-import { getLatestRelease } from "@/lib/github";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
 import { SITE_STATUS_ACTIVE, SITE_STATUS_ARCHIVED } from "@/lib/site-status";
@@ -18,7 +18,7 @@ export async function bumpSitePlugin(sitePluginId: string, pluginSlug: string) {
   const plugin = await prisma.plugin.findUnique({ where: { slug: pluginSlug } });
   if (!plugin) throw new Error("Plugin not found");
 
-  const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+  const release = await getPluginLatestRelease(plugin);
   if (!release?.version) throw new Error("No release found");
 
   await prisma.sitePlugin.update({
@@ -78,9 +78,9 @@ export async function sendCommand(
   return command;
 }
 
-async function getLatestVersion(plugin: { githubOwner: string; githubRepo: string; slug: string }) {
+async function getLatestVersion(plugin: Parameters<typeof getPluginLatestRelease>[0]) {
   try {
-    const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+    const release = await getPluginLatestRelease(plugin);
     return release?.version ?? null;
   } catch {
     return null;
@@ -93,7 +93,7 @@ export async function getReleaseVersions(pluginSlug: string) {
   if (!plugin) return [];
 
   try {
-    const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+    const release = await getPluginLatestRelease(plugin);
     return release ? [release.version] : [];
   } catch {
     return [];

@@ -20,6 +20,7 @@ import {
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { isNewerVersion } from "@/lib/plugin-version";
 import { formatSiteHost } from "@/lib/site-url";
 import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
 import type { PluginDetailPlugin, PluginRollout, PluginRolloutCommand, PluginRolloutSite } from "@/lib/plugin-rollout-types";
@@ -315,7 +316,7 @@ export function PluginDetailClient({
   function canBump(sp: SitePluginEntry) {
     if (!latestVersion || sp.autoSync) return false;
     const avail = sp.pinnedVersion || sp.installedVersion;
-    return isNewer(latestVersion, avail);
+    return isNewerVersion(latestVersion, avail);
   }
 
   const allSelected = rows.length > 0 && selected.size === rows.length;
@@ -719,18 +720,6 @@ function SelectCheckbox({
       )}
     </button>
   );
-}
-
-function isNewer(a: string, b: string): boolean {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const x = pa[i] || 0,
-      y = pb[i] || 0;
-    if (x > y) return true;
-    if (x < y) return false;
-  }
-  return false;
 }
 
 function visibleCommand(cmd: LatestCommand | null, now: number): LatestCommand | null {

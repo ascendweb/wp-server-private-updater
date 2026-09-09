@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatch, serializeCommand, isSiteCommand } from "@/lib/commands";
-import { getLatestRelease } from "@/lib/github";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import { activeSiteWhere } from "@/lib/site-status";
 import type { CommandType } from "@prisma/client";
@@ -53,7 +53,7 @@ export async function dispatchPluginCommands(
   let releaseVersion: string | null = null;
   let packageBase: string | null = null;
   if (type === "update") {
-    const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+    const release = await getPluginLatestRelease(plugin);
     if (release?.version) {
       releaseVersion = release.version;
       packageBase = `${getServerOriginFromEnv()}/api/v1/download/${plugin.slug}/${release.version}`;

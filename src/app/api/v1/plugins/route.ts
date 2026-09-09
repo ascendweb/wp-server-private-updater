@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseGitHubRepoUrl } from "@/lib/github";
+import { syncPluginLatestRelease } from "@/lib/plugin-release";
 
 export async function GET() {
   const session = await auth();
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const plugin = await prisma.plugin.create({
+    let plugin = await prisma.plugin.create({
       data: {
         slug,
         name,
@@ -52,8 +53,14 @@ export async function POST(req: NextRequest) {
           typeof releaseAssetPattern === "string" && releaseAssetPattern.trim().length > 0
             ? releaseAssetPattern.trim()
             : "{slug}-v{version}.zip",
-      } as never,
+      },
     });
+    try {
+      await syncPluginLatestRelease(plugin);
+      plugin = await prisma.plugin.findUniqueOrThrow({ where: { id: plugin.id } });
+    } catch {
+      // Plugin is usable even if the initial GitHub sync fails.
+    }
     return NextResponse.json(plugin, { status: 201 });
   } catch {
     return NextResponse.json(

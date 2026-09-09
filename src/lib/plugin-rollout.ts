@@ -2,7 +2,7 @@ import { cache } from "react";
 import type { Command, CommandStatus, CommandType } from "@prisma/client";
 import { prisma } from "./db";
 import { expireStaleCommands, serializeCommand } from "./commands";
-import { getLatestRelease } from "./github";
+import { getPluginLatestRelease } from "./plugin-release";
 import { activeSiteWhere } from "./site-status";
 import { sortBySiteUrl } from "./site-url";
 import type { PluginDetailData, PluginRollout, PluginRolloutSite } from "./plugin-rollout-types";
@@ -98,9 +98,9 @@ async function buildRollout(plugin: PluginWithSites): Promise<PluginRollout> {
   };
 }
 
-async function getLatestVersionSafe(owner: string, repo: string, slug: string) {
+async function getLatestVersionSafe(plugin: PluginWithSites) {
   try {
-    const release = await getLatestRelease(owner, repo, slug);
+    const release = await getPluginLatestRelease(plugin);
     return release?.version ?? null;
   } catch {
     return null;
@@ -121,7 +121,7 @@ export const getPluginDetailData = cache(async (pluginId: string): Promise<Plugi
 
   const [rollout, latestVersion] = await Promise.all([
     buildRollout(plugin),
-    getLatestVersionSafe(plugin.githubOwner, plugin.githubRepo, plugin.slug),
+    getLatestVersionSafe(plugin),
   ]);
 
   return {

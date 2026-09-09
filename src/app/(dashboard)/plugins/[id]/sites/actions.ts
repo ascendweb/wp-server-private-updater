@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatch } from "@/lib/commands";
-import { getLatestRelease } from "@/lib/github";
+import { getPluginLatestRelease } from "@/lib/plugin-release";
 import { getServerOriginFromEnv } from "@/lib/utils";
 import { activeSiteWhere } from "@/lib/site-status";
 
@@ -28,7 +28,7 @@ export async function forceUpdateSite(
 
   let packageUrl: string | null = null;
   if (license) {
-    const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+    const release = await getPluginLatestRelease(plugin);
     if (release) {
       const serverUrl = getServerOriginFromEnv();
       packageUrl = `${serverUrl}/api/v1/download/${pluginSlug}/${release.version}?license_key=${encodeURIComponent(license.key)}&site_url=${encodeURIComponent(site.url)}`;
@@ -62,7 +62,7 @@ export async function forceUpdateAll(pluginSlug: string) {
   const plugin = await prisma.plugin.findUnique({ where: { slug: pluginSlug } });
   if (!plugin) throw new Error("Plugin not found");
 
-  const release = await getLatestRelease(plugin.githubOwner, plugin.githubRepo, plugin.slug);
+  const release = await getPluginLatestRelease(plugin);
   const serverUrl = getServerOriginFromEnv();
 
   let dispatched = 0;
