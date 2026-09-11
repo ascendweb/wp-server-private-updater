@@ -1,0 +1,16 @@
+---
+description: TacoWP private WordPress plugin registry — architecture and API auth
+alwaysApply: true
+---
+
+# TacoWP (registry server)
+
+This repo is the **self-hosted private plugin registry** (Next.js + Prisma + PostgreSQL). The sibling WordPress worker is `wp-plugin-private-updater`. The server reads private GitHub releases via a GitHub App and forwards ZIP downloads and remote commands to licensed sites.
+
+Read `AGENTS.md` before changing APIs, auth, GitHub sync, or the site ping protocol.
+
+- Admin dashboard and most `/api/v1/*` admin routes: NextAuth session.
+- WordPress client routes (`update-check`, `download`, `heartbeat`, `license/validate`, `plugins/available`): license key + site URL.
+- Command poll/result: `siteToken`. Push to a site: HMAC ping to the **front page**, never `/wp-admin/` (WP Engine will block PHP writes).
+- Plugins are GitHub repos; latest release is cached on `Plugin`. Sites never talk to GitHub.
+- Domain: Plugin, Site, License, SitePlugin, Command — see `prisma/schema.prisma`.
