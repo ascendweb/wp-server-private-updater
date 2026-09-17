@@ -28,12 +28,14 @@ npm run dev
 - **License** — key bound to a site URL; WordPress client APIs authenticate with this
 - **SitePlugin** — per-site install: version, active, locked, pinned version, autoSync
 - **Command** — queued work for a site (`update`, `install`, `rollback`, `activate`, `deactivate`, `refresh`, `purge_cache`)
+- **McpOAuthClient** — public (CIMD/DCR) or service clients for the fleet MCP
 
 ## Auth split (do not mix)
 
 | Surface | Auth |
 | --- | --- |
 | Dashboard + `/api/v1/plugins`, licenses, users, stats, connect complete | NextAuth session |
+| MCP (`/api/mcp`) | OAuth 2.1 Bearer JWT (`mcp:read`); service clients use `client_credentials` |
 | WordPress client (`update-check`, `download`, `license/validate`, `plugins/available`, `heartbeat`) | License key + site URL |
 | Command poll / result / status | `siteToken` |
 | GitHub webhooks | GitHub App webhook secret |
@@ -56,11 +58,19 @@ The worker verifies HMAC, then POSTs `/api/v1/commands/poll` and later `/api/v1/
 
 Optional `wpe-auth` cookie is stored on `Site` when the worker returns it, so later pings pass WP Engine’s cache/WAF.
 
+## MCP
+
+`POST /api/mcp` is the fleet MCP. Tool names use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`). v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`.
+
+Do not wrap each WordPress plugin ability (Rank Math, core, …). Those are discovered later via `site/list-tools` / `site/call-tool`.
+
 ## Layout
 
 - `src/app/(dashboard)/` — admin UI (plugins, sites, licenses, users)
 - `src/app/api/v1/` — HTTP API
-- `src/lib/` — GitHub, licenses, commands, rollout, site URL helpers
+- `src/app/api/mcp/` — fleet MCP
+- `src/app/oauth/` — MCP OAuth authorization server
+- `src/lib/` — GitHub, licenses, commands, rollout, site URL helpers, MCP
 - `src/app/connect/approve/` — connect-from-wp-admin approval
 
 README.md lists routes; keep it updated when adding endpoints.

@@ -7,14 +7,17 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String?
-  name      String?
-  role      String    @default("admin")
-  status    String    @default("active")
-  createdAt DateTime  @default(now())
-  accounts  Account[]
+  id                 String                 @id @default(cuid())
+  email              String                 @unique
+  password           String?
+  name               String?
+  role               String                 @default("admin")
+  status             String                 @default("active")
+  createdAt          DateTime               @default(now())
+  accounts           Account[]
+  mcpOAuthClients    McpOAuthClient[]
+  mcpAuthCodes       McpAuthorizationCode[]
+  mcpRefreshTokens   McpRefreshToken[]
 }
 
 model Account {
@@ -139,5 +142,53 @@ model Command {
 
   @@index([siteId, status])
   @@index([status])
+}
+
+model McpOAuthClient {
+  id                      String                 @id @default(cuid())
+  clientId                String                 @unique
+  clientSecret            String?
+  name                    String
+  type                    String
+  tokenEndpointAuthMethod String                 @default("none")
+  redirectUris            String[]
+  scopes                  String[]
+  createdById             String?
+  createdBy               User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  authorizationCodes      McpAuthorizationCode[]
+  refreshTokens           McpRefreshToken[]
+}
+
+model McpAuthorizationCode {
+  code          String         @id
+  clientId      String
+  client        McpOAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri   String
+  codeChallenge String
+  resource      String?
+  scopes        String[]
+  expiresAt     DateTime
+  createdAt     DateTime       @default(now())
+
+  @@index([expiresAt])
+}
+
+model McpRefreshToken {
+  id        String         @id @default(cuid())
+  tokenHash String         @unique
+  clientId  String
+  client    McpOAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scopes    String[]
+  expiresAt DateTime
+  createdAt DateTime       @default(now())
+  revokedAt DateTime?
+
+  @@index([expiresAt])
 }
 

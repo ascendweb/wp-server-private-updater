@@ -78,6 +78,24 @@ All admin routes require an authenticated session and return `401 Unauthorized` 
 | POST   | `/api/v1/connect/initiate` | Public | Creates a short-lived JWT and returns an admin approval URL               |
 | POST   | `/api/v1/connect/complete` | Admin  | Verifies the connect JWT, creates a license, and returns a callback token |
 
+### MCP (OAuth)
+
+Remote MCP for AI agents. Authenticate with OAuth (people) or a service client (automations). Never send license keys or `siteToken`.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET/POST | `/api/mcp` | Bearer JWT (`mcp:read`) | Streamable HTTP MCP. Tools: `sites/list`, `site/get`, `site/get-plugins`, `site/get-commands`, `platform/list-plugins`, `platform/get-plugin-installs`, `platform/get-command` |
+| GET | `/.well-known/oauth-protected-resource` | -- | RFC 9728 resource metadata |
+| GET | `/.well-known/oauth-authorization-server` | -- | RFC 8414 authorization server metadata |
+| GET | `/oauth/authorize` | NextAuth session | Authorization-code + PKCE consent |
+| POST | `/oauth/token` | client + PKCE or secret | Token endpoint |
+| POST | `/oauth/register` | -- | Dynamic client registration |
+| GET | `/oauth/userinfo` | Bearer JWT | OpenID UserInfo |
+
+Connect ChatGPT/Claude with the MCP URL `{SERVER_URL}/api/mcp` and OAuth. Workspace admins can publish the connector so employees do not need Developer mode. For Gemini/automations, create a service client in Settings → MCP and use `client_credentials` against `/oauth/token`.
+
+Do not list this MCP in a public app directory while the registry is single-tenant.
+
 ### WordPress Client (public, license-key auth)
 
 | Method | Path                              | Description                                                     |
@@ -92,8 +110,9 @@ All admin routes require an authenticated session and return `401 Unauthorized` 
 See [`.env.example`](.env.example) for all available configuration. Key groups:
 
 - **Database** -- `DATABASE_URL`
-- **Server** -- `SERVER_URL` (public-facing base URL for download links and the connect flow)
+- **Server** -- `SERVER_URL` (public-facing base URL for download links, connect flow, and MCP OAuth issuer)
 - **NextAuth** -- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
+- **MCP** -- optional `MCP_JWT_SECRET` (defaults to `NEXTAUTH_SECRET`)
 - **GitHub OAuth** (optional) -- `GITHUB_AUTH_ENABLED`, `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`
 - **Google OAuth** (optional) -- `GOOGLE_AUTH_ENABLED`, `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`, `GOOGLE_AUTH_ALLOWED_DOMAIN`
 - **GitHub App** (for fetching private releases and receiving new-release webhooks) -- `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_WEBHOOK_SECRET`

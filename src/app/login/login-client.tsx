@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,25 +14,23 @@ type OAuthProviderInfo = { id: string; name: string };
 export function LoginClient({
   githubAuthEnabled,
   googleAuthEnabled,
+  oauthErrorCode,
+  callbackUrl,
 }: {
   githubAuthEnabled: boolean;
   googleAuthEnabled: boolean;
+  oauthErrorCode: string | null;
+  callbackUrl: string;
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
-  const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
   const oauthErrorMessage = getOauthErrorMessage(oauthErrorCode);
   const enabledOAuthProviders: OAuthProviderInfo[] = [
     ...(githubAuthEnabled ? [{ id: "github", name: "GitHub" }] : []),
     ...(googleAuthEnabled ? [{ id: "google", name: "Google" }] : []),
   ];
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setOauthErrorCode(params.get("error"));
-  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,14 +48,14 @@ export function LoginClient({
       setError("Invalid email or password");
       setLoading(false);
     } else {
-      router.push("/");
+      router.push(callbackUrl);
       router.refresh();
     }
   }
 
   async function handleOAuthSignIn(providerId: string) {
     setOauthLoading(providerId);
-    await signIn(providerId, { callbackUrl: "/" });
+    await signIn(providerId, { callbackUrl });
   }
 
   return (

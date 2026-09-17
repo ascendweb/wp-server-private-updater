@@ -12,15 +12,19 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getServerOriginFromEnv } from "@/lib/utils";
+import { listServiceClients } from "./mcp-actions";
+import { McpServiceClients } from "./mcp-clients";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   const serverUrl = getServerOriginFromEnv("");
   const githubAppId = process.env.GITHUB_APP_ID || "";
   const githubInstallationId = process.env.GITHUB_APP_INSTALLATION_ID || "";
   const githubWebhookSecret = process.env.GITHUB_APP_WEBHOOK_SECRET || "";
   const githubWebhookUrl = `${serverUrl}/api/v1/github/webhooks`;
+  const mcpUrl = `${serverUrl}/api/mcp`;
+  const serviceClients = await listServiceClients();
 
   return (
     <div className="space-y-6">
@@ -29,6 +33,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="general">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="mcp">MCP</TabsTrigger>
           <TabsTrigger value="github">GitHub App</TabsTrigger>
           <TabsTrigger value="wp">WP Plugin</TabsTrigger>
         </TabsList>
@@ -49,6 +54,52 @@ export default function SettingsPage() {
                   Set via SERVER_URL environment variable.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mcp" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>MCP server</CardTitle>
+              <CardDescription>
+                Connect ChatGPT, Claude, Cursor, or Gemini to this registry. People sign in with
+                OAuth. Automations use a service client.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>MCP URL</Label>
+                <Input value={mcpUrl} readOnly />
+              </div>
+              <div className="rounded-md bg-muted p-4 text-sm space-y-2">
+                <p className="font-medium">ChatGPT / Claude (workspace)</p>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  <li>Add a custom connector/app with this MCP URL</li>
+                  <li>Choose OAuth (not an API key)</li>
+                  <li>Scan tools, then sign in with your TacoWP account</li>
+                  <li>Workspace admins can publish the app so others skip Developer mode</li>
+                </ol>
+              </div>
+              <div className="rounded-md bg-muted p-4 text-sm space-y-2">
+                <p className="font-medium">Gemini / automations</p>
+                <p className="text-muted-foreground">
+                  Create a service client below. Token URL: <code>{serverUrl}/oauth/token</code>.
+                  Grant type <code>client_credentials</code>. Then send{" "}
+                  <code>Authorization: Bearer</code> to the MCP URL.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Service clients</CardTitle>
+              <CardDescription>
+                Named credentials for automations. Secrets are shown once.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <McpServiceClients initialClients={serviceClients} />
             </CardContent>
           </Card>
         </TabsContent>
