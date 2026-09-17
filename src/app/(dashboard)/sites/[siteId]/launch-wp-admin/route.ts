@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import {
-  launchErrorHtml,
-  launchFormHtml,
-  launchResponseHeaders,
-  mintSsoTicket,
-  requestIp,
-  type SsoMintFailure,
-} from "@/lib/sso";
+import { launchResponseHeaders, mintSsoTicket, requestIp, type SsoMintFailure } from "@/lib/sso";
+import { launchErrorHtml, launchFormHtml } from "@/lib/sso-launch-html";
 
 type RouteContext = { params: Promise<{ siteId: string }> };
 
@@ -78,7 +72,7 @@ async function handleLaunch(req: NextRequest, context: RouteContext) {
     });
   }
 
-  return new NextResponse(launchFormHtml(minted.siteUrl, minted.ticket), {
+  return new NextResponse(launchFormHtml(minted.siteUrl, minted.ticket, minted.email), {
     status: 200,
     headers: launchResponseHeaders(minted.siteUrl),
   });

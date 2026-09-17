@@ -259,55 +259,6 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function launchFormHtml(siteUrl: string, ticket: string): string {
-  const action = escapeHtml(ssoSiteActionUrl(siteUrl));
-  const secret = escapeHtml(ticket);
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="referrer" content="no-referrer">
-<meta name="robots" content="noindex,nofollow">
-<title>Opening WordPress admin</title>
-<style>
-body{font-family:system-ui,sans-serif;margin:2rem;color:#111}
-button{font:inherit;padding:.5rem .9rem;cursor:pointer}
-</style>
-</head>
-<body>
-<form method="post" action="${action}" accept-charset="UTF-8">
-<input type="hidden" name="wppu_action" value="sso">
-<input type="hidden" name="ticket" value="${secret}">
-<p>Continue to WordPress admin.</p>
-<button type="submit">Continue</button>
-</form>
-<script>document.forms[0].submit();</script>
-</body>
-</html>`;
-}
-
-export function launchErrorHtml(title: string, message: string, backHref: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="referrer" content="no-referrer">
-<meta name="robots" content="noindex,nofollow">
-<title>${escapeHtml(title)}</title>
-<style>
-body{font-family:system-ui,sans-serif;margin:2rem;color:#111;max-width:36rem}
-a{color:#111}
-</style>
-</head>
-<body>
-<h1>${escapeHtml(title)}</h1>
-<p>${escapeHtml(message)}</p>
-<p><a href="${escapeHtml(backHref)}">Back to site</a></p>
-</body>
-</html>`;
-}
-
 export const LAUNCH_NOSTORE_HEADERS = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
   Pragma: "no-cache",
@@ -326,6 +277,6 @@ export function launchResponseHeaders(siteUrl?: string): Record<string, string> 
     }
   }
   headers["Content-Security-Policy"] =
-    `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action ${formAction}; base-uri 'none'`;
+    `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'; form-action ${formAction}; base-uri 'none'`;
   return headers;
 }
