@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <SetPageHeader title="Settings" />
 
-      <Tabs defaultValue="general">
+      <Tabs defaultValue="general" orientation="horizontal">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="mcp">MCP</TabsTrigger>
