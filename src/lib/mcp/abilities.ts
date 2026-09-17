@@ -14,12 +14,27 @@ export type AbilityDef = {
   ship: AbilityShip;
 };
 
+/** Catalog IDs stay WordPress-style `namespace/ability`. MCP wire names replace `/` with `-`, matching WordPress `McpNameSanitizer` and MCP 2025-11-25 (`A-Za-z0-9_.-`). */
+export function toMcpToolName(id: string) {
+  return id.replaceAll("/", "-");
+}
+
+export function fromMcpToolName(name: string) {
+  if (name.includes("/")) return name;
+  const underscore = name.indexOf("_");
+  const hyphen = name.indexOf("-");
+  const separator =
+    underscore >= 0 && (hyphen < 0 || underscore < hyphen) ? underscore : hyphen;
+  if (separator <= 0) return name;
+  return `${name.slice(0, separator)}/${name.slice(separator + 1)}`;
+}
+
 export const ABILITIES: AbilityDef[] = [
   {
     id: "sites/list",
     title: "List sites",
     description:
-      "List licensed WordPress sites in this registry. Optional query filters by URL or label. Defaults to active sites; pass status=archived for archived sites. Does not dump installed plugins — use site/get-plugins or platform/get-plugin-installs.",
+      "List licensed WordPress sites in this registry. Optional query filters by URL or label. Defaults to active sites; pass status=archived for archived sites. Does not dump installed plugins — use site-get-plugins or platform-get-plugin-installs.",
     access: "read",
     backend: "db",
     ship: "v1",

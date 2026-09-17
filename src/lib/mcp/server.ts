@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createMcpHandler } from "mcp-handler";
-import { V1_ABILITIES } from "./abilities";
+import { V1_ABILITIES, toMcpToolName } from "./abilities";
 import {
   McpQueryError,
   getCommand,
@@ -32,7 +32,7 @@ export const mcpHandler = createMcpHandler(
     const byId = Object.fromEntries(V1_ABILITIES.map((ability) => [ability.id, ability]));
 
     server.registerTool(
-      "sites/list",
+      toMcpToolName("sites/list"),
       {
         title: byId["sites/list"].title,
         description: byId["sites/list"].description,
@@ -52,7 +52,7 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "site/get",
+      toMcpToolName("site/get"),
       {
         title: byId["site/get"].title,
         description: byId["site/get"].description,
@@ -71,7 +71,7 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "site/get-plugins",
+      toMcpToolName("site/get-plugins"),
       {
         title: byId["site/get-plugins"].title,
         description: byId["site/get-plugins"].description,
@@ -90,7 +90,7 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "site/get-commands",
+      toMcpToolName("site/get-commands"),
       {
         title: byId["site/get-commands"].title,
         description: byId["site/get-commands"].description,
@@ -109,7 +109,7 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "platform/list-plugins",
+      toMcpToolName("platform/list-plugins"),
       {
         title: byId["platform/list-plugins"].title,
         description: byId["platform/list-plugins"].description,
@@ -126,7 +126,7 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "platform/get-plugin-installs",
+      toMcpToolName("platform/get-plugin-installs"),
       {
         title: byId["platform/get-plugin-installs"].title,
         description: byId["platform/get-plugin-installs"].description,
@@ -145,7 +145,7 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "platform/get-command",
+      toMcpToolName("platform/get-command"),
       {
         title: byId["platform/get-command"].title,
         description: byId["platform/get-command"].description,
@@ -166,7 +166,7 @@ export const mcpHandler = createMcpHandler(
   {
     serverInfo: { name: "tacowp", version: "0.1.0" },
     instructions:
-      "This is the TacoWP fleet registry. Use sites/list, site/get, and site/get-plugins for inventory. Plugin tools on a WordPress site (Rank Math, core, etc.) are not listed here; those will be discovered later via site/list-tools.",
+      "This is the TacoWP fleet registry. Use sites-list, site-get, and site-get-plugins for inventory. Plugin tools on a WordPress site (Rank Math, core, etc.) are not listed here; those will be discovered later via site-list-tools.",
   }
 );
 

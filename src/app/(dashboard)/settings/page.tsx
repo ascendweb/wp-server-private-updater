@@ -78,6 +78,7 @@ export default async function SettingsPage() {
                   <li>Add a custom connector/app with this MCP URL</li>
                   <li>Choose OAuth (not an API key)</li>
                   <li>Scan tools, then sign in with your TacoWP account</li>
+                  <li>After a server update, refresh/rescan the connector so tool names stay current</li>
                   <li>Workspace admins can publish the app so others skip Developer mode</li>
                 </ol>
               </div>

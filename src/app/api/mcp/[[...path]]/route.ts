@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import { withMcpAuth } from "mcp-handler";
 import { mcpHandler } from "@/lib/mcp/server";
 import { MCP_READ_SCOPE, verifyAccessToken } from "@/lib/mcp/tokens";
-import { mcpResourceUrl } from "@/lib/mcp/origin";
 import { corsPreflight, withCors } from "@/lib/mcp/cors";
+import { rewriteIncomingMcpRequest, tryRestMcp } from "@/lib/mcp/rest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,12 +18,13 @@ const authed = withMcpAuth(
     required: true,
     requiredScopes: [MCP_READ_SCOPE],
     resourceMetadataPath: "/.well-known/oauth-protected-resource",
-    resourceUrl: mcpResourceUrl(),
   }
 );
 
 async function handle(req: NextRequest) {
-  return withCors(await authed(req));
+  const rest = await tryRestMcp(req);
+  if (rest) return withCors(rest);
+  return withCors(await authed(await rewriteIncomingMcpRequest(req)));
 }
 
 export async function GET(req: NextRequest) {

@@ -60,7 +60,7 @@ Optional `wpe-auth` cookie is stored on `Site` when the worker returns it, so la
 
 ## MCP
 
-`POST /api/mcp` is the fleet MCP. Tool names use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`). v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`.
+`POST /api/mcp` is the fleet MCP. Catalog IDs use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`); MCP wire names replace `/` with `-` (`sites-list`) to match WordPress `McpNameSanitizer` and MCP 2025-11-25 (no slashes in tool names). v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`.
 
 Do not wrap each WordPress plugin ability (Rank Math, core, …). Those are discovered later via `site/list-tools` / `site/call-tool`.
 
