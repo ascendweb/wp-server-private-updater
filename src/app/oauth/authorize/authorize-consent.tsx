@@ -6,7 +6,6 @@ import { approveMcpAuthorization } from "./actions";
 
 export function AuthorizeConsent({
   clientId,
-  clientName,
   redirectUri,
   state,
   codeChallenge,
@@ -16,7 +15,6 @@ export function AuthorizeConsent({
   userEmail,
 }: {
   clientId: string;
-  clientName: string;
   redirectUri: string;
   state: string;
   codeChallenge: string;
@@ -60,8 +58,7 @@ export function AuthorizeConsent({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Signed in as <span className="text-foreground">{userEmail}</span>. {clientName} will be
-        able to list sites and installed plugins. It will not receive license keys or site tokens.
+        Signed in as <span className="text-foreground">{userEmail}</span>.
       </p>
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>

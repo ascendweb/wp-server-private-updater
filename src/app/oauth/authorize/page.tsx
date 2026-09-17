@@ -80,13 +80,12 @@ export default async function AuthorizePage({
           <img src="/branding/logo-full.svg" className="h-12 mx-auto mb-2" alt="" />
           <CardTitle className="text-center">Connect an AI client</CardTitle>
           <CardDescription className="text-center">
-            {resolved.client.name} wants read access to your site inventory.
+            {resolved.client.name} wants to connect using your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <AuthorizeConsent
             clientId={clientId}
-            clientName={resolved.client.name}
             redirectUri={redirectUri}
             state={state}
             codeChallenge={codeChallenge}
