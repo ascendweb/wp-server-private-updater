@@ -23,11 +23,13 @@ npm run dev
 
 ## Domain model (`prisma/schema.prisma`)
 
-- **Plugin** — slug, GitHub owner/repo, release asset pattern, cached latest release
+- **User** — dashboard login; optional `wpLoginEmail` for WordPress SSO (defaults to `email`)
+- **Plugin** — slug, GitHub owner/repo, release asset pattern, cached latest release, `autoSyncNewSites` default for newly reported installs
 - **Site** — URL, `siteToken` (HMAC + poll auth), optional `pushUrl` / `wpeAuth`, status
 - **License** — key bound to a site URL; WordPress client APIs authenticate with this
 - **SitePlugin** — per-site install: version, active, locked, pinned version, autoSync
-- **Command** — queued work for a site (`update`, `install`, `rollback`, `activate`, `deactivate`, `refresh`, `purge_cache`)
+- **Command** — queued work for a site. Jobs (`update`, `install`, `rollback`, `activate`, `deactivate`, `refresh`, `purge_cache`) have `schedule: true` and a JSON `payload`. RPCs (`list_tools`, `call_ability`) are claimed by signed command id and never drained by the scheduled poll.
+- **SsoTicket** — one-time hashed secret to open wp-admin as an existing WordPress user. Minted by a dashboard session; redeemed by the site with `siteToken`.
 - **McpOAuthClient** — public (CIMD/DCR) or service clients for the fleet MCP
 
 ## Auth split (do not mix)
@@ -38,8 +40,10 @@ npm run dev
 | MCP (`/api/mcp`) | OAuth 2.1 Bearer JWT (`mcp:read`); service clients use `client_credentials` |
 | WordPress client (`update-check`, `download`, `license/validate`, `plugins/available`, `heartbeat`) | License key + site URL |
 | Command poll / result / status | `siteToken` |
+| WordPress SSO redeem (`/api/v1/sso/redeem`) | `siteToken` |
 | GitHub webhooks | GitHub App webhook secret |
-| Push to a site | HMAC-SHA256 of `ping:{ts}` with `siteToken`; POST to the site **front page** |
+| Push to a site | HMAC-SHA256 of `ping:{ts}` or `ping:{ts}:{command_id}` with `siteToken`; POST to the site **front page** |
+| WP Admin launch (`/sites/:id/launch-wp-admin`) | NextAuth session; auto-POSTs a one-time ticket to the site front page |
 
 ## Release pipeline
 
@@ -50,9 +54,17 @@ npm run dev
 
 ## Commands and remote ping
 
-Dashboard enqueue → `src/lib/commands.ts` creates a `Command`, then **pings** `https://site.example/` (trailing slash, not wp-admin).
+Dashboard enqueue → `src/lib/commands.ts` creates a `Command` with a JSON `payload` and `schedule`. Plugin jobs ping the site **front page** with HMAC-SHA256 of `ping:{ts}` (batch drain of `schedule: true` rows). Agent RPCs ping `ping:{ts}:{command_id}` so the worker claims **that row only** and returns the result in the ping JSON. The scheduled poll never picks RPC rows (`list_tools`, `call_ability`).
 
-The worker verifies HMAC, then POSTs `/api/v1/commands/poll` and later `/api/v1/commands/:id/result`. If the ping fails, the command stays `pending` for cron poll.
+ZIP URLs are hydrated at claim time, not stored on the command (no license keys in the row).
+
+The worker verifies HMAC, then POSTs `/api/v1/commands/poll` (optional `command_id`) and later `/api/v1/commands/:id/result`. If a job ping fails, the command stays `pending` for the scheduled poll. RPC failures are marked failed immediately.
+
+Ability calls run as the site's meta-tagged `tacowp-agent` user (`_tacowp_agent`); they do not use Application Passwords or a WordPress JWT.
+
+## WordPress SSO
+
+Dashboard **WP Admin** → `GET /sites/:siteId/launch-wp-admin` (session) mints a 60-second ticket (256-bit secret, SHA-256 stored). The response auto-POSTs the ticket to the site **front page**. The worker redeems `POST /api/v1/sso/redeem` with `siteToken`; TacoWP atomically consumes the ticket and returns the mapped login email (`User.wpLoginEmail` or `User.email`). WordPress looks up that existing user (`manage_options`, not the agent user) and calls `wp_set_auth_cookie`. No account is created. `siteToken` cannot mint tickets. Tickets are bound to one site.
 
 **Host constraint:** never ping `/wp-admin/`. Managed hosts (WP Engine) decide PHP-write permission before plugin code runs; an anonymous wp-admin POST is refused and unzip fails midway. Same pattern as ManageWP / MainWP.
 
@@ -60,9 +72,9 @@ Optional `wpe-auth` cookie is stored on `Site` when the worker returns it, so la
 
 ## MCP
 
-`POST /api/mcp` is the fleet MCP. Catalog IDs use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`); MCP wire names replace `/` with `-` (`sites-list`) to match WordPress `McpNameSanitizer` and MCP 2025-11-25 (no slashes in tool names). v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`.
+`POST /api/mcp` is the fleet MCP. Catalog IDs use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`); MCP wire names replace `/` with `-` (`sites-list`) because ChatGPT/OpenAI reject slashes in tool names. v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`.
 
-Do not wrap each WordPress plugin ability (Rank Math, core, …). Those are discovered later via `site/list-tools` / `site/call-tool`.
+Do not wrap each WordPress plugin ability (Rank Math, core, …). Those are discovered via `site-list-tools` / `site-call-tool`. The agent still calls the wrapper; the **payload** matches a direct ability execute.
 
 ## Layout
 
@@ -78,6 +90,6 @@ README.md lists routes; keep it updated when adding endpoints.
 ## Conventions
 
 - License-key WordPress routes are public (no session) but must validate license + site URL.
-- Rollout / per-site pin / autoSync live on `SitePlugin`, not on `Plugin`.
+- Rollout / per-site pin / autoSync live on `SitePlugin`. `Plugin.autoSyncNewSites` only sets autoSync (and pins latest) when a site first reports the plugin. Saving a new latest release bumps `pinnedVersion` on auto-sync installs.
 - Inflight commands older than one hour are expired as failed (`expireStaleCommands`).
 - Do not commit `.env` or GitHub App private keys.

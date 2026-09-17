@@ -12,6 +12,8 @@ import {
   listCatalogPlugins,
   listSites,
 } from "./queries";
+import { callSiteTool, listSiteTools } from "./rpc";
+import { RpcDispatchError } from "@/lib/commands";
 
 function isJsonRpc(body: unknown): boolean {
   if (Array.isArray(body)) {
@@ -87,32 +89,65 @@ function unauthorized() {
   });
 }
 
-async function executeAbility(id: string, args: Record<string, string>) {
+function stringArg(args: Record<string, unknown>, key: string) {
+  const value = args[key];
+  return typeof value === "string" ? value : "";
+}
+
+function abilityArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const raw = args.arguments;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const json = JSON.parse(raw) as unknown;
+      if (json && typeof json === "object" && !Array.isArray(json)) {
+        return json as Record<string, unknown>;
+      }
+    } catch {
+      // fall through to leftover query/body fields
+    }
+  }
+  const extra = { ...args };
+  delete extra.site;
+  delete extra.ability;
+  delete extra.arguments;
+  return extra;
+}
+
+async function executeAbility(id: string, args: Record<string, unknown>) {
   switch (id) {
-    case "sites/list":
+    case "sites/list": {
+      const status = stringArg(args, "status");
       return listSites({
-        query: args.query || undefined,
-        status: args.status === "archived" ? "archived" : args.status === "active" ? "active" : undefined,
+        query: stringArg(args, "query") || undefined,
+        status: status === "archived" ? "archived" : status === "active" ? "active" : undefined,
       });
+    }
     case "site/get":
-      return getSite(args.site);
+      return getSite(stringArg(args, "site"));
     case "site/get-plugins":
-      return getSitePlugins(args.site);
+      return getSitePlugins(stringArg(args, "site"));
     case "site/get-commands":
-      return getSiteCommands(args.site);
+      return getSiteCommands(stringArg(args, "site"));
     case "platform/list-plugins":
       return listCatalogPlugins();
     case "platform/get-plugin-installs":
-      return getPluginInstalls(args.plugin);
+      return getPluginInstalls(stringArg(args, "plugin"));
     case "platform/get-command":
-      return getCommand(args.command_id);
+      return getCommand(stringArg(args, "command_id"));
+    case "site/list-tools":
+      return listSiteTools(stringArg(args, "site"));
+    case "site/call-tool":
+      return callSiteTool(stringArg(args, "site"), stringArg(args, "ability"), abilityArgs(args));
     default:
       return null;
   }
 }
 
 function argsFromSearch(req: NextRequest) {
-  const args: Record<string, string> = {};
+  const args: Record<string, unknown> = {};
   req.nextUrl.searchParams.forEach((value, key) => {
     args[key] = value;
   });
@@ -150,7 +185,7 @@ export async function tryRestMcp(req: NextRequest): Promise<Response | null> {
     try {
       const body = await req.clone().json();
       if (body && typeof body === "object" && !Array.isArray(body)) {
-        args = { ...args, ...(body as Record<string, string>) };
+        args = { ...args, ...(body as Record<string, unknown>) };
       }
     } catch {
       // keep query args
@@ -167,7 +202,12 @@ export async function tryRestMcp(req: NextRequest): Promise<Response | null> {
     }
     return Response.json(result);
   } catch (error) {
-    const status = error instanceof McpQueryError && error.code === "bad_request" ? 400 : 404;
+    const status =
+      error instanceof RpcDispatchError
+        ? 502
+        : error instanceof McpQueryError && error.code === "bad_request"
+          ? 400
+          : 404;
     const message = error instanceof Error ? error.message : "Unknown error";
     return Response.json({ error: message }, { status });
   }

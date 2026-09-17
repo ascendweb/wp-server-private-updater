@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { slug, name, description, githubUrl, releaseAssetPattern } = body;
+  const { slug, name, description, githubUrl, releaseAssetPattern, autoSyncNewSites } = body;
 
   if (!slug || !name || !githubUrl) {
     return NextResponse.json(
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
           typeof releaseAssetPattern === "string" && releaseAssetPattern.trim().length > 0
             ? releaseAssetPattern.trim()
             : "{slug}-v{version}.zip",
+        autoSyncNewSites: autoSyncNewSites === true,
       },
     });
     try {

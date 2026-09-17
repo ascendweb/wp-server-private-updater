@@ -44,7 +44,10 @@ async function latestDisplayCommandsBySite(pluginSlug: string, siteIds: string[]
   const commands = await prisma.command.findMany({
     where: {
       siteId: { in: siteIds },
-      OR: [{ pluginSlug }, { type: { in: SITE_COMMAND_TYPES } }],
+      OR: [
+        { payload: { path: ["pluginSlug"], equals: pluginSlug } },
+        { type: { in: SITE_COMMAND_TYPES } },
+      ],
     },
     orderBy: { createdAt: "desc" },
   });
@@ -132,6 +135,7 @@ export const getPluginDetailData = cache(async (pluginId: string): Promise<Plugi
       description: plugin.description,
       githubOwner: plugin.githubOwner,
       githubRepo: plugin.githubRepo,
+      autoSyncNewSites: plugin.autoSyncNewSites,
     },
     latestVersion,
     rollout,

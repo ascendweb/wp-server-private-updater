@@ -132,10 +132,10 @@ export const ABILITIES: AbilityDef[] = [
     id: "site/list-tools",
     title: "List site tools",
     description:
-      "Discover WordPress abilities/MCP tools on one site (Rank Math, core, etc.). Returns original names such as rank-math/get-redirections. Then call them with site/call-tool. Not implemented until the worker exposes abilities.",
+      "Discover WordPress abilities on one site (Rank Math, core, etc.). Returns original names such as rank-math/get-redirections. Then call them with site-call-tool.",
     access: "read",
     backend: "wp",
-    ship: "later",
+    ship: "v1",
   },
   {
     id: "site/get-tool",
@@ -150,9 +150,9 @@ export const ABILITIES: AbilityDef[] = [
     title: "Call site tool",
     description:
       "Execute a WordPress ability on one site by original name (e.g. rank-math/get-redirections). Do not reimplement those tools here.",
-    access: "write",
+    access: "read",
     backend: "wp",
-    ship: "later",
+    ship: "v1",
   },
   {
     id: "platform/list-plugins",

@@ -5,7 +5,7 @@ export type PluginRolloutCommand = {
   pluginSlug: string | null;
   targetVersion: string | null;
   status: string;
-  result: string | null;
+  result: unknown;
   createdAt: string;
   completedAt: string | null;
 };
@@ -34,6 +34,7 @@ export type PluginDetailPlugin = {
   description: string | null;
   githubOwner: string;
   githubRepo: string;
+  autoSyncNewSites: boolean;
 };
 
 export type PluginDetailData = {

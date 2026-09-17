@@ -34,21 +34,20 @@ export async function PATCH(
     );
   }
 
-  const command = await prisma.command.findFirst({
-    where: { id, siteId: site.id },
-  });
-
-  if (!command) {
-    return NextResponse.json(
-      { error: "Command not found" },
-      { status: 404 }
-    );
-  }
-
-  await prisma.command.update({
-    where: { id: command.id },
+  const updated = await prisma.command.updateMany({
+    where: { id, siteId: site.id, status: { in: ["pending", "delivered"] } },
     data: { status: "in_progress" },
   });
+
+  if (updated.count === 0) {
+    const existing = await prisma.command.findFirst({
+      where: { id, siteId: site.id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Command not found" }, { status: 404 });
+    }
+  }
 
   return NextResponse.json({ success: true });
 }

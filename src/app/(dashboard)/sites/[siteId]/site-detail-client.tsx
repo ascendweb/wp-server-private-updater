@@ -2,18 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, Download, MoreHorizontal, History, Archive, ArchiveRestore, ArrowUp, RotateCw, BroomSparkles, Cookie } from "lucide-react";
+import { RefreshCw, Download, MoreHorizontal, History, Archive, ArchiveRestore, ArrowUp, RotateCw, BroomSparkles, Cookie, LogIn } from "lucide-react";
 import { toast } from "sonner";
-import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
+import { CommandStatusIcon, commandStatusHint, formatCommandStatus, formatCommandResult } from "@/lib/command-status";
 import { sendCommand, archiveSite, restoreSite, bumpSitePlugin, reloadHostCookies } from "./actions";
 import { sendSiteCommand } from "../actions";
 import { formatSiteHost } from "@/lib/site-url";
+import { cn } from "@/lib/utils";
 
 interface SitePlugin {
   id: string;
@@ -33,7 +34,7 @@ interface CommandEntry {
   pluginSlug: string | null;
   targetVersion: string | null;
   status: string;
-  result: string | null;
+  result: unknown;
   createdAt: string;
   completedAt: string | null;
 }
@@ -211,6 +212,22 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
         </Card>
       ) : (
         <div className="flex items-center justify-end gap-2">
+          {site.siteToken ? (
+            <a
+              href={`/sites/${site.id}/launch-wp-admin`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants())}
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              WP Admin
+            </a>
+          ) : (
+            <Button disabled>
+              <LogIn className="mr-2 h-4 w-4" />
+              WP Admin
+            </Button>
+          )}
           <Button variant="outline" onClick={handleReloadCookies} disabled={busy === "cookies"}>
             <Cookie className={`mr-2 h-4 w-4 ${busy === "cookies" ? "animate-spin" : ""}`} />
             {site.hasWpeAuth ? "Reload cookies" : "Load cookies"}
@@ -523,13 +540,7 @@ export function SiteDetailClient({ site, sitePlugins, commands, availableToInsta
 }
 
 function commandResultMessage(cmd: CommandEntry): string {
-  if (!cmd.result) return "";
-  try {
-    const parsed = JSON.parse(cmd.result) as { message?: string };
-    return parsed.message || "";
-  } catch {
-    return cmd.result;
-  }
+  return formatCommandResult(cmd.result);
 }
 
 function truncateMessage(message: string, maxLength: number): string {

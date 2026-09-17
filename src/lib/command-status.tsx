@@ -50,3 +50,30 @@ export function CommandStatusIcon({ status }: { status: string }) {
       return null;
   }
 }
+
+export function formatCommandResult(result: unknown): string {
+  if (result == null || result === "") return "";
+  if (typeof result === "string") {
+    try {
+      const parsed = JSON.parse(result) as { message?: string };
+      if (parsed && typeof parsed === "object" && parsed.message) {
+        return parsed.message;
+      }
+      return result;
+    } catch {
+      return result;
+    }
+  }
+  if (typeof result === "object") {
+    const record = result as { message?: unknown };
+    if (typeof record.message === "string" && record.message) {
+      return record.message;
+    }
+    try {
+      return JSON.stringify(result, null, 2);
+    } catch {
+      return String(result);
+    }
+  }
+  return String(result);
+}

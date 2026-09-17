@@ -8,7 +8,7 @@ import { SiteDetailClient } from "./site-detail-client";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { SITE_STATUS_ARCHIVED } from "@/lib/site-status";
-import { expireStaleCommands } from "@/lib/commands";
+import { expireStaleCommands, serializeCommand } from "@/lib/commands";
 
 export async function generateMetadata({
   params,
@@ -95,16 +95,7 @@ export default async function SiteDetailPage({
           isManaged: !!sp.pluginId,
           lastReportedAt: sp.lastReportedAt.toISOString(),
         }))}
-        commands={site.commands.map((c) => ({
-          id: c.id,
-          type: c.type,
-          pluginSlug: c.pluginSlug,
-          targetVersion: c.targetVersion,
-          status: c.status,
-          result: c.result,
-          createdAt: c.createdAt.toISOString(),
-          completedAt: c.completedAt?.toISOString() ?? null,
-        }))}
+        commands={site.commands.map(serializeCommand)}
         availableToInstall={availableToInstall}
       />
     </div>

@@ -2,6 +2,7 @@ import type { Plugin } from "@prisma/client";
 import { prisma } from "./db";
 import { fetchLatestReleaseFromGitHub, isGitHubAppConfigured, type GitHubRelease } from "./github";
 import { isNewerVersion, stripVersionPrefix } from "./plugin-version";
+import { pinAutoSyncSites } from "./site-plugin";
 
 export type StoredRelease = GitHubRelease;
 
@@ -24,6 +25,10 @@ export async function savePluginLatestRelease(pluginId: string, release: StoredR
       latestSyncedAt: new Date(),
     },
   });
+
+  if (release?.version) {
+    await pinAutoSyncSites(pluginId, release.version);
+  }
 }
 
 export async function syncPluginLatestRelease(plugin: Plugin): Promise<StoredRelease | null> {

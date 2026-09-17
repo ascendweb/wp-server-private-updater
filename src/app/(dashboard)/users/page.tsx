@@ -13,6 +13,7 @@ export default async function UsersPage() {
       name: true,
       role: true,
       status: true,
+      wpLoginEmail: true,
       createdAt: true,
       accounts: { select: { id: true, provider: true, createdAt: true } },
     },

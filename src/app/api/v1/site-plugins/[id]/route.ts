@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sitePluginAutoSyncUpdate } from "@/lib/site-plugin";
 
 export async function PATCH(
   req: NextRequest,
@@ -20,6 +21,16 @@ export async function PATCH(
   }
   if (typeof body.autoSync === "boolean") {
     data.autoSync = body.autoSync;
+  }
+
+  if (data.autoSync === true && data.pinnedVersion === undefined) {
+    const existing = await prisma.sitePlugin.findUnique({
+      where: { id },
+      select: { pluginId: true },
+    });
+    if (existing?.pluginId) {
+      Object.assign(data, await sitePluginAutoSyncUpdate(existing.pluginId, true));
+    }
   }
 
   try {

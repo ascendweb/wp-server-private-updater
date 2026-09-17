@@ -4,6 +4,7 @@ import { getPluginLatestRelease } from "@/lib/plugin-release";
 import { isNewerVersion } from "@/lib/plugin-version";
 import { prisma } from "@/lib/db";
 import { getServerOrigin } from "@/lib/utils";
+import { reconcileAutoSyncPin, sitePluginCreateFields } from "@/lib/site-plugin";
 
 type BatchItem = { slug: string; version: string };
 
@@ -65,18 +66,20 @@ export async function POST(req: NextRequest) {
           create: {
             siteId: site.id,
             pluginSlug: slug,
-            pluginId: plugin.id,
             installedVersion: version,
-            pinnedVersion: version,
             isActive: true,
             lastReportedAt: new Date(),
+            ...sitePluginCreateFields(plugin, version),
           },
           update: {
             installedVersion: version,
             lastReportedAt: new Date(),
           },
         });
+        spBySlug.set(slug, sp);
       }
+
+      sp = await reconcileAutoSyncPin(sp, plugin.latestVersion);
 
       if (sp.autoSync) {
         const release = await getPluginLatestRelease(plugin);

@@ -31,7 +31,7 @@ All admin routes require an authenticated session and return `401 Unauthorized` 
 | GET    | `/api/v1/plugins`     | List all plugins with license counts                          |
 | POST   | `/api/v1/plugins`     | Create a new plugin from slug, name, and GitHub repo          |
 | GET    | `/api/v1/plugins/:id` | Get a single plugin with its licenses                         |
-| PATCH  | `/api/v1/plugins/:id` | Update plugin fields (name, description, repo, asset pattern) |
+| PATCH  | `/api/v1/plugins/:id` | Update plugin fields (name, description, repo, asset pattern, auto-sync new sites) |
 | DELETE | `/api/v1/plugins/:id` | Delete a plugin                                               |
 
 ### Licenses (admin)
@@ -50,7 +50,7 @@ All admin routes require an authenticated session and return `401 Unauthorized` 
 | GET    | `/api/v1/users`     | List all users with linked auth accounts            |
 | POST   | `/api/v1/users`     | Create a new email/password user                    |
 | GET    | `/api/v1/users/:id` | Get a single user                                   |
-| PATCH  | `/api/v1/users/:id` | Update name, email, role, status, or reset password |
+| PATCH  | `/api/v1/users/:id` | Update name, email, WP login email, role, status, or reset password |
 | DELETE | `/api/v1/users/:id` | Delete a user (cannot delete yourself)              |
 
 ### Releases (admin)
@@ -84,7 +84,7 @@ Remote MCP for AI agents. Authenticate with OAuth (people) or a service client (
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET/POST | `/api/mcp` | Bearer JWT (`mcp:read`) | Streamable HTTP MCP. Tools: `sites-list`, `site-get`, `site-get-plugins`, `site-get-commands`, `platform-list-plugins`, `platform-get-plugin-installs`, `platform-get-command` |
+| GET/POST | `/api/mcp` | Bearer JWT (`mcp:read`) | Streamable HTTP MCP. Tools: `sites-list`, `site-get`, `site-get-plugins`, `site-get-commands`, `site-list-tools`, `site-call-tool`, `platform-list-plugins`, `platform-get-plugin-installs`, `platform-get-command` |
 | GET | `/.well-known/oauth-protected-resource` | -- | RFC 9728 resource metadata |
 | GET | `/.well-known/oauth-authorization-server` | -- | RFC 8414 authorization server metadata |
 | GET | `/oauth/authorize` | NextAuth session | Authorization-code + PKCE consent |
@@ -104,6 +104,30 @@ Do not list this MCP in a public app directory while the registry is single-tena
 | GET    | `/api/v1/download/:slug/:version` | Stream the plugin release ZIP from GitHub                       |
 | GET    | `/api/v1/license/validate`        | Check whether a license key is valid for a given site           |
 | GET    | `/api/v1/plugins/available`       | List installable plugins for a licensed site with download URLs |
+| POST   | `/api/v1/heartbeat`               | Report installed plugin inventory                               |
+
+### Commands (siteToken)
+
+The ping is a signed pointer, not the command. Payload stays on this server. ZIP URLs are hydrated at claim time.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/v1/commands/poll` | `siteToken` | Claim scheduled jobs, or one row when `command_id` is set |
+| GET | `/api/v1/commands/pending` | license key + site URL | Legacy poll of scheduled jobs |
+| PATCH | `/api/v1/commands/:id/status` | `siteToken` | Mark `in_progress` |
+| POST | `/api/v1/commands/:id/result` | `siteToken` | Store JSON result |
+| GET | `/api/v1/sites/:siteId/commands` | session | Recent commands for a site |
+
+Deploy **plugin 1.10.0** before using **WP Admin** SSO. Deploy **plugin 1.9.0** before relying on `site-list-tools` / `site-call-tool`. Job pings (`ping:{ts}`) stay compatible; RPC pings sign `ping:{ts}:{command_id}`.
+
+### WordPress SSO
+
+One-time launch into an existing WordPress admin. The browser never sends the email; `siteToken` cannot mint tickets.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET/POST | `/sites/:siteId/launch-wp-admin` | session | Mint a 60s ticket and auto-POST it to the site front page |
+| POST | `/api/v1/sso/redeem` | `siteToken` | Atomically consume the ticket and return `{ email }` |
 
 ## Environment Variables
 

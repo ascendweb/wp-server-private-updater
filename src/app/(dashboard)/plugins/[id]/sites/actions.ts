@@ -3,8 +3,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatch } from "@/lib/commands";
-import { getPluginLatestRelease } from "@/lib/plugin-release";
-import { getServerOriginFromEnv } from "@/lib/utils";
 import { activeSiteWhere } from "@/lib/site-status";
 
 async function requireAuth() {
@@ -12,30 +10,13 @@ async function requireAuth() {
   if (!session?.user) throw new Error("Unauthorized");
 }
 
-export async function forceUpdateSite(
-  siteId: string,
-  pluginSlug: string
-) {
+export async function forceUpdateSite(siteId: string, pluginSlug: string) {
   await requireAuth();
 
   const plugin = await prisma.plugin.findUnique({ where: { slug: pluginSlug } });
   if (!plugin) throw new Error("Plugin not found");
 
-  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
-  const license = await prisma.license.findFirst({
-    where: { siteId: site.id, status: "active" },
-  });
-
-  let packageUrl: string | null = null;
-  if (license) {
-    const release = await getPluginLatestRelease(plugin);
-    if (release) {
-      const serverUrl = getServerOriginFromEnv();
-      packageUrl = `${serverUrl}/api/v1/download/${pluginSlug}/${release.version}?license_key=${encodeURIComponent(license.key)}&site_url=${encodeURIComponent(site.url)}`;
-    }
-  }
-
-  return createAndDispatch(siteId, "update", pluginSlug, null, packageUrl);
+  return createAndDispatch(siteId, "update", pluginSlug);
 }
 
 export async function forceUpdateAll(pluginSlug: string) {
@@ -47,33 +28,15 @@ export async function forceUpdateAll(pluginSlug: string) {
       isLocked: false,
       site: activeSiteWhere,
     },
-    include: {
-      site: {
-        include: {
-          licenses: {
-            where: { status: "active" },
-            take: 1,
-          },
-        },
-      },
-    },
+    select: { siteId: true },
   });
 
   const plugin = await prisma.plugin.findUnique({ where: { slug: pluginSlug } });
   if (!plugin) throw new Error("Plugin not found");
 
-  const release = await getPluginLatestRelease(plugin);
-  const serverUrl = getServerOriginFromEnv();
-
   let dispatched = 0;
   for (const sp of sitePlugins) {
-    const license = sp.site.licenses[0];
-    let packageUrl: string | null = null;
-    if (license && release) {
-      packageUrl = `${serverUrl}/api/v1/download/${pluginSlug}/${release.version}?license_key=${encodeURIComponent(license.key)}&site_url=${encodeURIComponent(sp.site.url)}`;
-    }
-
-    await createAndDispatch(sp.siteId, "update", pluginSlug, null, packageUrl);
+    await createAndDispatch(sp.siteId, "update", pluginSlug);
     dispatched++;
   }
 

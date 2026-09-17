@@ -47,6 +47,7 @@ export async function PATCH(
     githubOwner?: string;
     githubRepo?: string;
     releaseAssetPattern?: string;
+    autoSyncNewSites?: boolean;
   } = {};
 
   if (typeof body.name === "string") {
@@ -70,6 +71,9 @@ export async function PATCH(
     const trimmedPattern = body.releaseAssetPattern.trim();
     updateData.releaseAssetPattern =
       trimmedPattern.length > 0 ? trimmedPattern : "{slug}-v{version}.zip";
+  }
+  if (typeof body.autoSyncNewSites === "boolean") {
+    updateData.autoSyncNewSites = body.autoSyncNewSites;
   }
 
   try {

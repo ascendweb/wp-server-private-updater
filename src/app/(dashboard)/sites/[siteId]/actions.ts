@@ -4,7 +4,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatchMany, reloadSiteHostCookies } from "@/lib/commands";
 import { getPluginLatestRelease } from "@/lib/plugin-release";
-import { getServerOriginFromEnv } from "@/lib/utils";
 import type { CommandType } from "@prisma/client";
 import { SITE_STATUS_ACTIVE, SITE_STATUS_ARCHIVED } from "@/lib/site-status";
 
@@ -37,31 +36,7 @@ export async function sendCommands(
     return [];
   }
 
-  const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
-  const serverUrl = getServerOriginFromEnv();
-  const license = await prisma.license.findFirst({
-    where: { siteId: site.id, status: "active" },
-  });
-
-  const specs = [];
-  for (const item of items) {
-    const plugin = await prisma.plugin.findUnique({ where: { slug: item.pluginSlug } });
-    let packageUrl: string | null = null;
-    if (plugin && license) {
-      const version = item.targetVersion || (await getLatestVersion(plugin));
-      if (version) {
-        packageUrl = `${serverUrl}/api/v1/download/${item.pluginSlug}/${version}?license_key=${encodeURIComponent(license.key)}&site_url=${encodeURIComponent(site.url)}`;
-      }
-    }
-    specs.push({
-      type: item.type,
-      pluginSlug: item.pluginSlug,
-      targetVersion: item.targetVersion ?? null,
-      packageUrl,
-    });
-  }
-
-  return createAndDispatchMany(siteId, specs);
+  return createAndDispatchMany(siteId, items);
 }
 
 export async function sendCommand(
@@ -76,15 +51,6 @@ export async function sendCommand(
     throw new Error("Failed to create command.");
   }
   return command;
-}
-
-async function getLatestVersion(plugin: Parameters<typeof getPluginLatestRelease>[0]) {
-  try {
-    const release = await getPluginLatestRelease(plugin);
-    return release?.version ?? null;
-  } catch {
-    return null;
-  }
 }
 
 export async function getReleaseVersions(pluginSlug: string) {

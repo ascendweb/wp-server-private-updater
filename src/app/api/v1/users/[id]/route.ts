@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hashSync } from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { parseWpLoginEmail } from "@/lib/sso";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -40,7 +41,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { name, email, role, status, password } = body;
+  const { name, email, role, status, password, wpLoginEmail } = body;
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name || null;
@@ -48,6 +49,13 @@ export async function PATCH(
   if (role !== undefined) data.role = role;
   if (status !== undefined) data.status = status;
   if (password) data.password = hashSync(password, 12);
+  if (wpLoginEmail !== undefined) {
+    const parsed = parseWpLoginEmail(wpLoginEmail);
+    if (parsed === undefined) {
+      return NextResponse.json({ error: "Invalid WordPress login email" }, { status: 400 });
+    }
+    data.wpLoginEmail = parsed;
+  }
 
   try {
     const user = await prisma.user.update({

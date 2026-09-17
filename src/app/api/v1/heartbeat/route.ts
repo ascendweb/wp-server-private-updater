@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite, ensureSiteToken } from "@/lib/license";
 import { prisma } from "@/lib/db";
+import { reconcileAutoSyncPin, sitePluginCreateFields } from "@/lib/site-plugin";
 
 interface HeartbeatPlugin {
   slug: string;
@@ -48,19 +49,19 @@ export async function POST(req: NextRequest) {
       where: { slug: p.slug },
     });
 
-    await prisma.sitePlugin.upsert({
+    const sp = await prisma.sitePlugin.upsert({
       where: {
         siteId_pluginSlug: { siteId: site.id, pluginSlug: p.slug },
       },
       create: {
         siteId: site.id,
         pluginSlug: p.slug,
-        pluginId: managedPlugin?.id ?? null,
         pluginBasename: p.basename || null,
         pluginName: p.name || null,
         installedVersion: p.version,
         isActive: p.active,
         lastReportedAt: new Date(),
+        ...sitePluginCreateFields(managedPlugin, p.version),
       },
       update: {
         pluginId: managedPlugin?.id ?? undefined,
@@ -71,6 +72,10 @@ export async function POST(req: NextRequest) {
         lastReportedAt: new Date(),
       },
     });
+
+    if (managedPlugin) {
+      await reconcileAutoSyncPin(sp, managedPlugin.latestVersion);
+    }
   }
 
   // Full inventory only: drop unlocked plugins that were not reported.

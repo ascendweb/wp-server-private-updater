@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Puzzle, KeyRound, Globe, Activity, Terminal, Shield } from "lucide-react";
 import { formatSiteHost } from "@/lib/site-url";
 import { activeSiteWhere, excludeArchivedSiteLicenses } from "@/lib/site-status";
+import { commandSubject } from "@/lib/commands";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -92,7 +93,7 @@ export default async function DashboardPage() {
                     <TableCell>
                       <Badge variant="outline">{cmd.type}</Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{cmd.pluginSlug || "—"}</TableCell>
+                    <TableCell className="font-medium">{commandSubject(cmd) || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={cmd.status === "completed" ? "success" : cmd.status === "failed" ? "error" : "warn"}>
                         {cmd.status}

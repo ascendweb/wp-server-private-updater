@@ -39,6 +39,7 @@ import {
 import { Plus, MoreHorizontal, Pencil, Trash2, GitBranch, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
+import { Switch } from "@/components/ui/switch";
 
 export type PluginListItem = {
   id: string;
@@ -50,6 +51,7 @@ export type PluginListItem = {
   releaseAssetPattern: string;
   createdAt: Date;
   latestVersion: string | null;
+  autoSyncNewSites: boolean;
   sites: number;
   needsUpdate: number;
   outdated: number;
@@ -61,10 +63,16 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: PluginListIt
   const [editPlugin, setEditPlugin] = useState<PluginListItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshingSlug, setRefreshingSlug] = useState<string | null>(null);
+  const [autoSyncNewSites, setAutoSyncNewSites] = useState(false);
 
   usePageHeader(
     "Plugins",
-    <Button onClick={() => setOpen(true)}>
+    <Button
+      onClick={() => {
+        setAutoSyncNewSites(false);
+        setOpen(true);
+      }}
+    >
       <Plus className="mr-2 h-4 w-4" /> Add Plugin
     </Button>
   );
@@ -98,6 +106,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: PluginListIt
       githubUrl: fd.get("githubUrl"),
       releaseAssetPattern:
         fd.get("releaseAssetPattern") || "{slug}-v{version}.zip",
+      autoSyncNewSites,
     };
 
     const url = editPlugin
@@ -140,7 +149,10 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: PluginListIt
         open={open}
         onOpenChange={(v) => {
           setOpen(v);
-          if (!v) setEditPlugin(null);
+          if (!v) {
+            setEditPlugin(null);
+            setAutoSyncNewSites(false);
+          }
         }}
       >
         <DialogContent>
@@ -209,6 +221,19 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: PluginListIt
                 placeholder="{slug}-v{version}.zip"
                 defaultValue={editPlugin?.releaseAssetPattern || "{slug}-v{version}.zip"}
                 required
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div className="space-y-1">
+                <Label htmlFor="autoSyncNewSites">Auto-sync new sites</Label>
+                <p className="text-xs text-muted-foreground">
+                  New installs of this plugin follow the latest release. Existing sites are unchanged.
+                </p>
+              </div>
+              <Switch
+                id="autoSyncNewSites"
+                checked={autoSyncNewSites}
+                onCheckedChange={setAutoSyncNewSites}
               />
             </div>
             <DialogFooter>
@@ -325,6 +350,7 @@ export function PluginsClient({ initialPlugins }: { initialPlugins: PluginListIt
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditPlugin(plugin);
+                              setAutoSyncNewSites(plugin.autoSyncNewSites);
                               setOpen(true);
                             }}
                           >

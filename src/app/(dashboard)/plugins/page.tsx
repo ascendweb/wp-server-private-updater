@@ -48,6 +48,7 @@ export default async function PluginsPage() {
       releaseAssetPattern: plugin.releaseAssetPattern,
       createdAt: plugin.createdAt,
       latestVersion: plugin.latestVersion,
+      autoSyncNewSites: plugin.autoSyncNewSites,
       sites: stats.sites,
       needsUpdate: stats.needsUpdate,
       outdated: stats.outdated,

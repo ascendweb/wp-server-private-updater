@@ -18,11 +18,12 @@ import {
   BroomSparkles,
 } from "lucide-react";
 import { VisitSiteLink } from "@/components/visit-site-link";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { isNewerVersion } from "@/lib/plugin-version";
 import { formatSiteHost } from "@/lib/site-url";
-import { CommandStatusIcon, commandStatusHint, formatCommandStatus } from "@/lib/command-status";
+import { CommandStatusIcon, commandStatusHint, formatCommandStatus, formatCommandResult } from "@/lib/command-status";
 import type { PluginDetailPlugin, PluginRollout, PluginRolloutCommand, PluginRolloutSite } from "@/lib/plugin-rollout-types";
 import { dispatchPluginCommands, setSitesAutoSync } from "./actions";
 import { usePluginRollout } from "./use-plugin-rollout";
@@ -51,6 +52,8 @@ export function PluginDetailClient({
   );
   const rows = rollout.sites;
   const [latestVersion, setLatestVersion] = useState(initialLatestVersion);
+  const [autoSyncNewSites, setAutoSyncNewSites] = useState(plugin.autoSyncNewSites);
+  const [savingAutoSyncNewSites, setSavingAutoSyncNewSites] = useState(false);
   const [refreshingVersion, setRefreshingVersion] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,6 +67,10 @@ export function PluginDetailClient({
   useEffect(() => {
     setLatestVersion(initialLatestVersion);
   }, [initialLatestVersion]);
+
+  useEffect(() => {
+    setAutoSyncNewSites(plugin.autoSyncNewSites);
+  }, [plugin.autoSyncNewSites]);
 
   useEffect(() => {
     const ids = new Set(rows.map((row) => row.siteId));
@@ -101,7 +108,14 @@ export function PluginDetailClient({
         return;
       }
       const release = await res.json();
-      setLatestVersion(release.version || null);
+      const version = (release.version as string | null) || null;
+      setLatestVersion(version);
+      if (version) {
+        updateSites(
+          rows.filter((row) => row.autoSync).map((row) => row.siteId),
+          { pinnedVersion: version }
+        );
+      }
       toast.success("Latest version refreshed");
     } catch {
       toast.error("Failed to refresh latest version");
@@ -227,7 +241,10 @@ export function PluginDetailClient({
     try {
       await setSitesAutoSync(plugin.id, siteIds, autoSync);
       toast.success(autoSync ? "Auto-sync enabled" : "Auto-sync disabled");
-      updateSites(siteIds, { autoSync });
+      updateSites(siteIds, {
+        autoSync,
+        ...(autoSync && latestVersion ? { pinnedVersion: latestVersion } : {}),
+      });
     } catch {
       toast.error("Failed to update auto-sync");
     }
@@ -287,7 +304,10 @@ export function PluginDetailClient({
     try {
       await setSitesAutoSync(plugin.id, [siteId], autoSync);
       toast.success(autoSync ? "Auto-sync enabled" : "Auto-sync disabled");
-      updateSites([siteId], { autoSync });
+      updateSites([siteId], {
+        autoSync,
+        ...(autoSync && latestVersion ? { pinnedVersion: latestVersion } : {}),
+      });
     } catch {
       toast.error("Failed to toggle auto-sync");
     }
@@ -311,6 +331,25 @@ export function PluginDetailClient({
       toast.error("Failed to update version");
     }
     setEditingId(null);
+  }
+
+  async function handleAutoSyncNewSites(next: boolean) {
+    setAutoSyncNewSites(next);
+    setSavingAutoSyncNewSites(true);
+    try {
+      const res = await fetch(`/api/v1/plugins/${plugin.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoSyncNewSites: next }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      toast.success(next ? "New sites will auto-sync" : "New sites will stay pinned");
+    } catch {
+      setAutoSyncNewSites(!next);
+      toast.error("Failed to update auto-sync default");
+    } finally {
+      setSavingAutoSyncNewSites(false);
+    }
   }
 
   function canBump(sp: SitePluginEntry) {
@@ -367,11 +406,21 @@ export function PluginDetailClient({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Version Rollout</CardTitle>
-          <CardDescription>
-            Select sites to bump, update, activate, or change auto-sync. Each site stays frozen at its installed version until you bump it.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle>Version Rollout</CardTitle>
+            <CardDescription>
+              Select sites to bump, update, activate, or change auto-sync. Each site stays frozen at its pinned version until you bump it, unless auto-sync is on.
+            </CardDescription>
+          </div>
+          <label className="flex shrink-0 items-center gap-2 text-sm">
+            <Switch
+              checked={autoSyncNewSites}
+              disabled={savingAutoSyncNewSites}
+              onCheckedChange={handleAutoSyncNewSites}
+            />
+            Auto-sync new sites
+          </label>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
@@ -745,11 +794,5 @@ function labelForType(type: string) {
 }
 
 function commandResultMessage(cmd: LatestCommand): string {
-  if (!cmd.result) return "";
-  try {
-    const parsed = JSON.parse(cmd.result) as { message?: string };
-    return parsed.message || "";
-  } catch {
-    return cmd.result;
-  }
+  return formatCommandResult(cmd.result);
 }

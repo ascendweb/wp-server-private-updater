@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Ban, Trash2, CheckCircle, KeyRound } from "lucide-react";
+import { Plus, MoreHorizontal, Ban, Trash2, CheckCircle, KeyRound, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 
@@ -26,6 +26,7 @@ interface User {
   name: string | null;
   role: string;
   status: string;
+  wpLoginEmail: string | null;
   createdAt: Date;
   accounts: AccountInfo[];
 }
@@ -35,6 +36,8 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [loginEmailOpen, setLoginEmailOpen] = useState(false);
+  const [loginEmailUser, setLoginEmailUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
   usePageHeader(
@@ -133,6 +136,37 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
     setResetOpen(true);
   }
 
+  function openLoginEmailDialog(user: User) {
+    setLoginEmailUser(user);
+    setLoginEmailOpen(true);
+  }
+
+  async function handleWpLoginEmail(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!loginEmailUser) return;
+    setLoading(true);
+    const fd = new FormData(e.currentTarget);
+    const value = String(fd.get("wpLoginEmail") || "").trim();
+    const stored = value === loginEmailUser.email ? "" : value;
+
+    const res = await fetch(`/api/v1/users/${loginEmailUser.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wpLoginEmail: stored }),
+    });
+
+    if (res.ok) {
+      toast.success("WordPress login email updated");
+      setLoginEmailOpen(false);
+      setLoginEmailUser(null);
+      router.refresh();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "Failed to update WordPress login email");
+    }
+    setLoading(false);
+  }
+
   const providerLabel: Record<string, string> = {
     credentials: "Email",
     github: "GitHub",
@@ -183,6 +217,7 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>WP login email</TableHead>
                   <TableHead>Auth Methods</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
@@ -195,6 +230,9 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                   <TableRow key={user.id}>
                     <TableCell className="text-sm font-medium">{user.name || <span className="text-muted-foreground">--</span>}</TableCell>
                     <TableCell className="text-sm">{user.email}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {user.wpLoginEmail && user.wpLoginEmail !== user.email ? user.wpLoginEmail : "Same as email"}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {user.accounts.map((a) => (
@@ -232,6 +270,9 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
                           <DropdownMenuItem onClick={() => openResetDialog(user.id)}>
                             <KeyRound className="mr-2 h-4 w-4" /> Reset Password
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openLoginEmailDialog(user)}>
+                            <Mail className="mr-2 h-4 w-4" /> WP login email
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(user.id)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -246,6 +287,35 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={loginEmailOpen} onOpenChange={setLoginEmailOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>WordPress login email</DialogTitle>
+            <DialogDescription>
+              SSO looks up this address on the WordPress site. Leave blank to use the TacoWP account email. The WordPress user must already exist.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleWpLoginEmail} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="wp-login-email">Email</Label>
+              <Input
+                id="wp-login-email"
+                name="wpLoginEmail"
+                type="email"
+                defaultValue={loginEmailUser?.wpLoginEmail || loginEmailUser?.email || ""}
+                placeholder={loginEmailUser?.email || "user@example.com"}
+                key={loginEmailUser?.id || "wp-login-email"}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent>

@@ -11,11 +11,16 @@ import {
   listCatalogPlugins,
   listSites,
 } from "./queries";
+import { callSiteTool, listSiteTools } from "./rpc";
 
 function jsonResult(data: unknown) {
+  const structured =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : { result: data };
   return {
     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
-    structuredContent: data as Record<string, unknown>,
+    structuredContent: structured,
   };
 }
 
@@ -162,11 +167,51 @@ export const mcpHandler = createMcpHandler(
         }
       }
     );
+
+    server.registerTool(
+      toMcpToolName("site/list-tools"),
+      {
+        title: byId["site/list-tools"].title,
+        description: byId["site/list-tools"].description,
+        inputSchema: z.object({
+          site: z.string().describe("Site id or URL"),
+        }),
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+      },
+      async ({ site }) => {
+        try {
+          return jsonResult(await listSiteTools(site));
+        } catch (error) {
+          return errorResult(error);
+        }
+      }
+    );
+
+    server.registerTool(
+      toMcpToolName("site/call-tool"),
+      {
+        title: byId["site/call-tool"].title,
+        description: byId["site/call-tool"].description,
+        inputSchema: z.object({
+          site: z.string().describe("Site id or URL"),
+          ability: z.string().describe("Original WordPress ability name, e.g. rank-math/get-redirections"),
+          arguments: z.record(z.string(), z.unknown()).optional().describe("Arguments for the ability"),
+        }),
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      },
+      async ({ site, ability, arguments: args }) => {
+        try {
+          return jsonResult(await callSiteTool(site, ability, args || {}));
+        } catch (error) {
+          return errorResult(error);
+        }
+      }
+    );
   },
   {
     serverInfo: { name: "tacowp", version: "0.1.0" },
     instructions:
-      "This is the TacoWP fleet registry. Use sites-list, site-get, and site-get-plugins for inventory. Plugin tools on a WordPress site (Rank Math, core, etc.) are not listed here; those will be discovered later via site-list-tools.",
+      "This is the TacoWP fleet registry. Use sites-list, site-get, and site-get-plugins for inventory. Discover WordPress plugin tools (Rank Math, core, etc.) with site-list-tools, then run them with site-call-tool.",
   }
 );
 

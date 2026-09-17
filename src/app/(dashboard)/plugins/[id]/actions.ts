@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createAndDispatch, serializeCommand, isSiteCommand } from "@/lib/commands";
 import { getPluginLatestRelease } from "@/lib/plugin-release";
-import { getServerOriginFromEnv } from "@/lib/utils";
+import { sitePluginAutoSyncUpdate } from "@/lib/site-plugin";
 import { activeSiteWhere } from "@/lib/site-status";
 import type { CommandType } from "@prisma/client";
 
@@ -38,42 +38,24 @@ export async function dispatchPluginCommands(
       siteId: { in: siteIds },
       site: activeSiteWhere,
     },
-    include: {
-      site: {
-        include: {
-          licenses: {
-            where: { status: "active" },
-            take: 1,
-          },
-        },
-      },
-    },
+    select: { siteId: true },
   });
 
   let releaseVersion: string | null = null;
-  let packageBase: string | null = null;
   if (type === "update") {
     const release = await getPluginLatestRelease(plugin);
     if (release?.version) {
       releaseVersion = release.version;
-      packageBase = `${getServerOriginFromEnv()}/api/v1/download/${plugin.slug}/${release.version}`;
     }
   }
 
   const commands = await Promise.all(
     sitePlugins.map(async (sp) => {
-      const license = sp.site.licenses[0];
-      let packageUrl: string | null = null;
-      if (type === "update" && license && packageBase) {
-        packageUrl = `${packageBase}?license_key=${encodeURIComponent(license.key)}&site_url=${encodeURIComponent(sp.site.url)}`;
-      }
-
       const command = await createAndDispatch(
         sp.siteId,
         type,
         isSiteCommand(type) ? null : plugin.slug,
-        type === "update" ? releaseVersion : null,
-        packageUrl
+        type === "update" ? releaseVersion : null
       );
       return serializeCommand(command);
     })
@@ -95,7 +77,7 @@ export async function setSitesAutoSync(
 
   const result = await prisma.sitePlugin.updateMany({
     where: { pluginId, siteId: { in: siteIds }, site: activeSiteWhere },
-    data: { autoSync },
+    data: await sitePluginAutoSyncUpdate(pluginId, autoSync),
   });
 
   return { updated: result.count };

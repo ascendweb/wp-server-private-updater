@@ -13,11 +13,13 @@ model User {
   name               String?
   role               String                 @default("admin")
   status             String                 @default("active")
+  wpLoginEmail       String?
   createdAt          DateTime               @default(now())
   accounts           Account[]
   mcpOAuthClients    McpOAuthClient[]
   mcpAuthCodes       McpAuthorizationCode[]
   mcpRefreshTokens   McpRefreshToken[]
+  ssoTickets         SsoTicket[]
 }
 
 model Account {
@@ -46,6 +48,7 @@ model Plugin {
   latestChangelog     String?
   latestPublishedAt   DateTime?
   latestSyncedAt      DateTime?
+  autoSyncNewSites    Boolean      @default(false)
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   sitePlugins         SitePlugin[]
@@ -67,6 +70,7 @@ model Site {
   licenses   License[]
   plugins    SitePlugin[]
   commands   Command[]
+  ssoTickets SsoTicket[]
 
   @@index([status])
 }
@@ -116,6 +120,8 @@ enum CommandType {
   deactivate
   refresh
   purge_cache
+  list_tools
+  call_ability
 }
 
 enum CommandStatus {
@@ -127,21 +133,52 @@ enum CommandStatus {
 }
 
 model Command {
-  id            String        @id @default(cuid())
-  siteId        String
-  site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  type          CommandType
-  pluginSlug    String?
-  targetVersion String?
-  packageUrl    String?
-  status        CommandStatus @default(pending)
-  result        String?
-  createdAt     DateTime      @default(now())
-  deliveredAt   DateTime?
-  completedAt   DateTime?
+  id           String        @id @default(cuid())
+  siteId       String
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  type         CommandType
+  payload      Json          @default("{}")
+  schedule     Boolean       @default(true)
+  status       CommandStatus @default(pending)
+  result       Json?
+  createdAt    DateTime      @default(now())
+  deliveredAt  DateTime?
+  completedAt  DateTime?
 
   @@index([siteId, status])
+  @@index([siteId, schedule, status])
   @@index([status])
+}
+
+model SsoTicket {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId    String
+  site      Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  email     String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([siteId])
+  @@index([expiresAt])
+}
+
+model SsoEvent {
+  id        String   @id @default(cuid())
+  siteId    String?
+  userId    String?
+  email     String?
+  result    String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([siteId])
+  @@index([userId])
 }
 
 model McpOAuthClient {

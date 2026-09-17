@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite } from "@/lib/license";
 import { prisma } from "@/lib/db";
-import { serializePendingCommand, expireStaleCommands } from "@/lib/commands";
+import { serializeClaimedCommand, expireStaleCommands } from "@/lib/commands";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -31,15 +31,15 @@ export async function GET(req: NextRequest) {
     where: {
       siteId: site.id,
       status: { in: ["pending", "delivered"] },
+      schedule: true,
     },
     orderBy: { createdAt: "asc" },
   });
 
-  // Mark as delivered
   if (commands.length > 0) {
     await prisma.command.updateMany({
       where: {
-        id: { in: commands.map((c) => c.id) },
+        id: { in: commands.map((command) => command.id) },
         status: "pending",
       },
       data: {
@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    commands: commands.map(serializePendingCommand),
+    commands: await Promise.all(
+      commands.map((command) => serializeClaimedCommand(command, site, license.key))
+    ),
   });
 }

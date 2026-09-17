@@ -4,6 +4,7 @@ import { getPluginLatestRelease } from "@/lib/plugin-release";
 import { isNewerVersion } from "@/lib/plugin-version";
 import { prisma } from "@/lib/db";
 import { getServerOrigin } from "@/lib/utils";
+import { reconcileAutoSyncPin, sitePluginCreateFields } from "@/lib/site-plugin";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -32,22 +33,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Plugin not found", site_token: siteToken }, { status: 404 });
   }
 
-  const sp = await prisma.sitePlugin.upsert({
-    where: { siteId_pluginSlug: { siteId: site.id, pluginSlug: slug } },
-    create: {
-      siteId: site.id,
-      pluginSlug: slug,
-      pluginId: plugin.id,
-      installedVersion: version,
-      pinnedVersion: version,
-      isActive: true,
-      lastReportedAt: new Date(),
-    },
-    update: {
-      installedVersion: version,
-      lastReportedAt: new Date(),
-    },
-  });
+  const sp = await reconcileAutoSyncPin(
+    await prisma.sitePlugin.upsert({
+      where: { siteId_pluginSlug: { siteId: site.id, pluginSlug: slug } },
+      create: {
+        siteId: site.id,
+        pluginSlug: slug,
+        installedVersion: version,
+        isActive: true,
+        lastReportedAt: new Date(),
+        ...sitePluginCreateFields(plugin, version),
+      },
+      update: {
+        installedVersion: version,
+        lastReportedAt: new Date(),
+      },
+    }),
+    plugin.latestVersion
+  );
 
   const serverUrl = getServerOrigin(req);
 

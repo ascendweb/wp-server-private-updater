@@ -1,0 +1,1 @@
+ALTER TABLE "Plugin" ADD COLUMN "autoSyncNewSites" BOOLEAN NOT NULL DEFAULT false;

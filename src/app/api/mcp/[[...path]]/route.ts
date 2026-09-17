@@ -6,7 +6,7 @@ import { corsPreflight, withCors } from "@/lib/mcp/cors";
 import { rewriteIncomingMcpRequest, tryRestMcp } from "@/lib/mcp/rest";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 const authed = withMcpAuth(
   mcpHandler,

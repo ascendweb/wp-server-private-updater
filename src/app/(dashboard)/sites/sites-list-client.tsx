@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, RotateCw, BroomSparkles } from "lucide-react";
+import { MoreHorizontal, RotateCw, BroomSparkles, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/components/page-header";
 import { sendSiteCommand } from "./actions";
@@ -126,6 +126,15 @@ export function SitesListClient({ archived }: { archived: boolean }) {
                             <MoreHorizontal className="h-4 w-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="min-w-48">
+                            {site.siteToken && (
+                              <DropdownMenuItem
+                                className="whitespace-nowrap"
+                                onClick={() => window.open(`/sites/${site.id}/launch-wp-admin`, "_blank", "noopener,noreferrer")}
+                              >
+                                <LogIn />
+                                WP Admin
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               className="whitespace-nowrap"
                               onClick={() => handleSiteCommand(site.id, "refresh")}
