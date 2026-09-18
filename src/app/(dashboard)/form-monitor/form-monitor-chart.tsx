@@ -40,12 +40,7 @@ export function FormMonitorChart({ days }: { days: FormMonitorDayBucket[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={36} />
           <Tooltip itemSorter={(item) => (item.dataKey === "submissions" ? 0 : 1)} />
-          <Legend
-            payload={[
-              { value: "Submissions", type: "line", color: "var(--chart-1)", id: "submissions" },
-              { value: "Missing Tracking", type: "line", color: "var(--chart-2)", id: "missing" },
-            ]}
-          />
+          <Legend itemSorter={(item) => (item.dataKey === "submissions" ? 0 : 1)} />
           <Line
             type="monotone"
             dataKey="submissions"
