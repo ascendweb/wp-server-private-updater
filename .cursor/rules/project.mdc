@@ -14,4 +14,4 @@ Read `AGENTS.md` before changing APIs, auth, GitHub sync, or the site ping proto
 - Command poll/result: `siteToken`. Push to a site: HMAC ping to the **front page**, never `/wp-admin/` (WP Engine will block PHP writes). Job pings sign `ping:{ts}`; RPC pings sign `ping:{ts}:{command_id}`.
 - WP Admin SSO: session mints a one-time ticket; the site redeems it with `siteToken`. Browser never supplies the login email. WordPress does not create users.
 - Plugins are GitHub repos; latest release is cached on `Plugin`. Sites never talk to GitHub.
-- Domain: Plugin, Site, License, SitePlugin, Command, SsoTicket — see `prisma/schema.prisma`.
+- Domain: Plugin, Site, License, SitePlugin, Command, SsoTicket, FormMonitorLead — see `prisma/schema.prisma`.

@@ -106,6 +106,18 @@ Do not list this MCP in a public app directory while the registry is single-tena
 | GET    | `/api/v1/plugins/available`       | List installable plugins for a licensed site with download URLs |
 | POST   | `/api/v1/heartbeat`               | Report installed plugin inventory                               |
 
+### Form Monitor (feature)
+
+Isolated form vs tracking pipeline. Gravity Forms reports submissions; WhatConverts (or another tracker) confirms via webhook. Join key is `referenceId` (`tacowp_reference_id`). Missing-tracking alerts are 1-hour delayed pg-boss jobs in the same Postgres (`pgboss` schema). Settings live at `/settings/form-monitor`, linked only from Form Monitor.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/v1/form-monitor/events` | license key + site URL | Record a form submission (`reference_id`, optional form/entry ids) |
+| POST | `/api/v1/form-monitor/webhooks/tracking/:token` | unguessable URL | Record a tracking confirmation; ignored without `tacowp_reference_id` |
+| GET/POST | `/api/v1/form-monitor/settings` | session | Tracking webhook URL (copy/rotate) and outbound missing-tracking URL |
+| GET | `/api/v1/form-monitor/sites` | session | Per-site last form, last tracking, missing last 7 days |
+| GET | `/api/v1/form-monitor/sites/:siteId` | session | 7-day submissions vs missing buckets |
+
 ### Commands (siteToken)
 
 The ping is a signed pointer, not the command. Payload stays on this server. ZIP URLs are hydrated at claim time.
@@ -135,6 +147,7 @@ See [`.env.example`](.env.example) for all available configuration. Key groups:
 
 - **Database** -- `DATABASE_URL`
 - **Server** -- `SERVER_URL` (public-facing base URL for download links, connect flow, and MCP OAuth issuer)
+- **Form Monitor** -- optional `FORM_MONITOR_CHECK_DELAY_SECONDS` (default `3600`) for the delayed missing-tracking job. pg-boss uses the same `DATABASE_URL` (its own `pgboss` schema).
 - **NextAuth** -- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
 - **MCP** -- optional `MCP_JWT_SECRET` (defaults to `NEXTAUTH_SECRET`)
 - **GitHub OAuth** (optional) -- `GITHUB_AUTH_ENABLED`, `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`

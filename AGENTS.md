@@ -29,6 +29,7 @@ npm run dev
 - **License** — key bound to a site URL; WordPress client APIs authenticate with this
 - **SitePlugin** — per-site install: version, active, locked, pinned version, autoSync
 - **Command** — queued work for a site. Jobs (`update`, `install`, `rollback`, `activate`, `deactivate`, `refresh`, `purge_cache`) have `schedule: true` and a JSON `payload`. RPCs (`list_tools`, `call_ability`) are claimed by signed command id and never drained by the scheduled poll.
+- **FormMonitorLead** — form vs tracking match keyed by `referenceId` (`src/Feature/FormMonitor/`)
 - **SsoTicket** — one-time hashed secret to open wp-admin as an existing WordPress user. Minted by a dashboard session; redeemed by the site with `siteToken`.
 - **McpOAuthClient** — public (CIMD/DCR) or service clients for the fleet MCP
 
@@ -43,6 +44,8 @@ npm run dev
 | WordPress SSO redeem (`/api/v1/sso/redeem`) | `siteToken` |
 | GitHub webhooks | GitHub App webhook secret |
 | Push to a site | HMAC-SHA256 of `ping:{ts}` or `ping:{ts}:{command_id}` with `siteToken`; POST to the site **front page** |
+| Form Monitor events | License key + site URL |
+| Form Monitor tracking webhook | Unguessable URL token on `FormMonitorSetting` |
 | WP Admin launch (`/sites/:id/launch-wp-admin`) | NextAuth session; auto-POSTs a one-time ticket to the site front page |
 
 ## Release pipeline
@@ -78,11 +81,12 @@ Do not wrap each WordPress plugin ability (Rank Math, core, …). Those are disc
 
 ## Layout
 
-- `src/app/(dashboard)/` — admin UI (plugins, sites, licenses, users)
+- `src/app/(dashboard)/` — admin UI (plugins, sites, licenses, users, form monitor)
 - `src/app/api/v1/` — HTTP API
 - `src/app/api/mcp/` — fleet MCP
 - `src/app/oauth/` — MCP OAuth authorization server
 - `src/lib/` — GitHub, licenses, commands, rollout, site URL helpers, MCP
+- `src/Feature/FormMonitor/` — isolated form/tracking monitor (license events + tracking webhook + pg-boss)
 - `src/app/connect/approve/` — connect-from-wp-admin approval
 
 README.md lists routes; keep it updated when adding endpoints.
@@ -92,4 +96,5 @@ README.md lists routes; keep it updated when adding endpoints.
 - License-key WordPress routes are public (no session) but must validate license + site URL.
 - Rollout / per-site pin / autoSync live on `SitePlugin`. `Plugin.autoSyncNewSites` only sets autoSync (and pins latest) when a site first reports the plugin. Saving a new latest release bumps `pinnedVersion` on auto-sync installs.
 - Inflight commands older than one hour are expired as failed (`expireStaleCommands`).
+- Form Monitor is isolated under `src/Feature/FormMonitor/`. It uses license-key site identity and a tracking webhook; missing-tracking alerts are delayed pg-boss jobs in the same Postgres (`pgboss` schema). Do not fold it into heartbeat or commands.
 - Do not commit `.env` or GitHub App private keys.

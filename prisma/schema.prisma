@@ -67,10 +67,11 @@ model Site {
   archivedAt DateTime?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
-  licenses   License[]
-  plugins    SitePlugin[]
-  commands   Command[]
-  ssoTickets SsoTicket[]
+  licenses         License[]
+  plugins          SitePlugin[]
+  commands         Command[]
+  ssoTickets       SsoTicket[]
+  formMonitorLeads FormMonitorLead[]
 
   @@index([status])
 }
@@ -227,5 +228,31 @@ model McpRefreshToken {
   revokedAt DateTime?
 
   @@index([expiresAt])
+}
+
+model FormMonitorSetting {
+  id                   String   @id @default("default")
+  trackingWebhookToken String   @unique
+  missingWebhookUrl    String?
+  updatedAt            DateTime @updatedAt
+}
+
+model FormMonitorLead {
+  id                 String    @id @default(cuid())
+  referenceId        String    @unique
+  siteId             String?
+  site               Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  formId             Int?
+  entryId            Int?
+  formTitle          String?
+  formReceivedAt     DateTime?
+  trackingReceivedAt DateTime?
+  trackingId         String?
+  missingNotifiedAt  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([siteId, formReceivedAt])
+  @@index([siteId, trackingReceivedAt])
 }
 

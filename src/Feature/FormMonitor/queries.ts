@@ -1,0 +1,110 @@
+import { prisma } from "@/lib/db";
+import { activeSiteWhere } from "@/lib/site-status";
+import { sortBySiteUrl } from "@/lib/site-url";
+import type { FormMonitorDayBucket, FormMonitorSiteSummary } from "./types";
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function utcDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
+  const since = new Date(Date.now() - WEEK_MS);
+  const sites = await prisma.site.findMany({
+    where: activeSiteWhere,
+    select: { id: true, url: true, label: true },
+  });
+
+  if (sites.length === 0) return [];
+
+  const siteIds = sites.map((site) => site.id);
+
+  const [lastForm, lastTracking, missing] = await Promise.all([
+    prisma.formMonitorLead.groupBy({
+      by: ["siteId"],
+      where: { siteId: { in: siteIds }, formReceivedAt: { not: null } },
+      _max: { formReceivedAt: true },
+    }),
+    prisma.formMonitorLead.groupBy({
+      by: ["siteId"],
+      where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null } },
+      _max: { trackingReceivedAt: true },
+    }),
+    prisma.formMonitorLead.groupBy({
+      by: ["siteId"],
+      where: {
+        siteId: { in: siteIds },
+        formReceivedAt: { gte: since },
+        trackingReceivedAt: null,
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const lastFormBySite = new Map(lastForm.map((row) => [row.siteId, row._max.formReceivedAt]));
+  const lastTrackingBySite = new Map(
+    lastTracking.map((row) => [row.siteId, row._max.trackingReceivedAt])
+  );
+  const missingBySite = new Map(missing.map((row) => [row.siteId, row._count._all]));
+
+  return sortBySiteUrl(
+    sites.map((site) => ({
+      id: site.id,
+      url: site.url,
+      label: site.label,
+      lastFormAt: lastFormBySite.get(site.id)?.toISOString() ?? null,
+      lastTrackingAt: lastTrackingBySite.get(site.id)?.toISOString() ?? null,
+      missingLast7Days: missingBySite.get(site.id) ?? 0,
+    })),
+    (site) => site.url
+  );
+}
+
+export async function getSiteChart(siteId: string) {
+  const site = await prisma.site.findUnique({
+    where: { id: siteId },
+    select: { id: true, url: true, label: true, status: true },
+  });
+  if (!site) return null;
+
+  const start = startOfUtcDay(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+  const leads = await prisma.formMonitorLead.findMany({
+    where: {
+      siteId,
+      formReceivedAt: { gte: start },
+    },
+    select: {
+      formReceivedAt: true,
+      trackingReceivedAt: true,
+    },
+  });
+
+  const buckets: FormMonitorDayBucket[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    const day = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+    buckets.push({ date: utcDateKey(day), submissions: 0, missing: 0 });
+  }
+  const byDate = new Map(buckets.map((bucket) => [bucket.date, bucket]));
+
+  for (const lead of leads) {
+    if (!lead.formReceivedAt) continue;
+    const bucket = byDate.get(utcDateKey(lead.formReceivedAt));
+    if (!bucket) continue;
+    bucket.submissions += 1;
+    if (!lead.trackingReceivedAt) bucket.missing += 1;
+  }
+
+  return {
+    site: {
+      id: site.id,
+      url: site.url,
+      label: site.label,
+    },
+    days: buckets,
+  };
+}
