@@ -24,7 +24,7 @@ export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
 
   const siteIds = sites.map((site) => site.id);
 
-  const [lastForm, lastTracking, missing] = await Promise.all([
+  const [lastForm, lastTracking, missing, openMissing] = await Promise.all([
     prisma.formMonitorLead.groupBy({
       by: ["siteId"],
       where: { siteId: { in: siteIds }, formReceivedAt: { not: null } },
@@ -34,6 +34,15 @@ export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
       by: ["siteId"],
       where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null } },
       _max: { trackingReceivedAt: true },
+    }),
+    prisma.formMonitorLead.groupBy({
+      by: ["siteId"],
+      where: {
+        siteId: { in: siteIds },
+        formReceivedAt: { gte: since },
+        trackingReceivedAt: null,
+      },
+      _count: { _all: true },
     }),
     prisma.formMonitorLead.groupBy({
       by: ["siteId"],
@@ -52,6 +61,7 @@ export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
     lastTracking.map((row) => [row.siteId, row._max.trackingReceivedAt])
   );
   const missingBySite = new Map(missing.map((row) => [row.siteId, row._count._all]));
+  const openMissingBySite = new Map(openMissing.map((row) => [row.siteId, row._count._all]));
 
   return sortBySiteUrl(
     sites.map((site) => ({
@@ -61,6 +71,7 @@ export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
       lastFormAt: lastFormBySite.get(site.id)?.toISOString() ?? null,
       lastTrackingAt: lastTrackingBySite.get(site.id)?.toISOString() ?? null,
       missingLast7Days: missingBySite.get(site.id) ?? 0,
+      status: (openMissingBySite.get(site.id) ?? 0) > 0 ? "fail" : "pass",
     })),
     (site) => site.url
   );
@@ -76,7 +87,7 @@ function emptyWeekBuckets(start: Date): FormMonitorDayBucket[] {
 }
 
 function fillDayBuckets(
-  leads: { formReceivedAt: Date | null; trackingReceivedAt: Date | null; ignoredAt: Date | null }[],
+  leads: { formReceivedAt: Date | null; trackingReceivedAt: Date | null }[],
   start: Date
 ): FormMonitorDayBucket[] {
   const buckets = emptyWeekBuckets(start);
@@ -87,7 +98,7 @@ function fillDayBuckets(
     const bucket = byDate.get(utcDateKey(lead.formReceivedAt));
     if (!bucket) continue;
     bucket.submissions += 1;
-    if (!lead.trackingReceivedAt && !lead.ignoredAt) bucket.missing += 1;
+    if (!lead.trackingReceivedAt) bucket.missing += 1;
   }
 
   return buckets;
@@ -115,7 +126,6 @@ export async function listOverview(): Promise<{
           select: {
             formReceivedAt: true,
             trackingReceivedAt: true,
-            ignoredAt: true,
           },
         });
 
@@ -142,7 +152,6 @@ export async function getSiteChart(siteId: string) {
       select: {
         formReceivedAt: true,
         trackingReceivedAt: true,
-        ignoredAt: true,
       },
     }),
     prisma.formMonitorLead.findMany({

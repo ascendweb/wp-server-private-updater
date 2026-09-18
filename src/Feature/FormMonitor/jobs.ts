@@ -1,6 +1,6 @@
 import { PgBoss } from "pg-boss";
 import { prisma } from "@/lib/db";
-import { CHECK_TRACKING_QUEUE } from "./protocol";
+import { CHECK_TRACKING_QUEUE, DEFAULT_CHECK_DELAY_MINUTES } from "./protocol";
 import { getFormMonitorSettings } from "./webhook-token";
 
 const globalForBoss = globalThis as unknown as {
@@ -8,11 +8,11 @@ const globalForBoss = globalThis as unknown as {
   formMonitorWorker?: Promise<void>;
 };
 
-function checkDelaySeconds(): number {
-  const raw = process.env.FORM_MONITOR_CHECK_DELAY_SECONDS;
-  if (!raw) return 3600;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 3600;
+async function checkDelaySeconds(): Promise<number> {
+  const settings = await getFormMonitorSettings();
+  const minutes = settings.checkDelayMinutes;
+  const value = Number.isInteger(minutes) && minutes >= 0 ? minutes : DEFAULT_CHECK_DELAY_MINUTES;
+  return value * 60;
 }
 
 async function createBoss(): Promise<PgBoss> {
@@ -41,12 +41,12 @@ async function getBoss(): Promise<PgBoss> {
 }
 
 export async function enqueueCheckTracking(referenceId: string): Promise<void> {
-  const boss = await getBoss();
+  const [boss, delay] = await Promise.all([getBoss(), checkDelaySeconds()]);
   await boss.send(
     CHECK_TRACKING_QUEUE,
     { referenceId },
     {
-      startAfter: checkDelaySeconds(),
+      startAfter: delay,
       singletonKey: referenceId,
     }
   );

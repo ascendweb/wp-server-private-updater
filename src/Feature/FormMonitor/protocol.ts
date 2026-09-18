@@ -1,5 +1,6 @@
 export const REFERENCE_FIELD = "tacowp_reference_id";
 export const CHECK_TRACKING_QUEUE = "form-monitor-check-tracking";
+export const DEFAULT_CHECK_DELAY_MINUTES = 60;
 
 export function parseOptionalInt(value: unknown): number | null {
   if (typeof value === "number" && Number.isInteger(value)) return value;

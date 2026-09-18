@@ -83,9 +83,10 @@ export function FormMonitorListClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Site</TableHead>
-                  <TableHead>Last form</TableHead>
-                  <TableHead>Last tracking</TableHead>
-                  <TableHead>Missing last 7 days</TableHead>
+                  <TableHead>Last Form</TableHead>
+                  <TableHead>Last Tracking</TableHead>
+                  <TableHead>Missing Last 7 Days</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -105,7 +106,10 @@ export function FormMonitorListClient() {
                       <RelativeTime value={site.lastTrackingAt} />
                     </TableCell>
                     <TableCell>
-                      <Badge variant={site.missingLast7Days > 0 ? "warn" : "subtle"}>{site.missingLast7Days}</Badge>
+                      <Badge variant="subtle">{site.missingLast7Days}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={site.status === "pass" ? "success" : "error"}>{site.status === "pass" ? "Passing" : "Failing"}</Badge>
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <DropdownMenu>
@@ -113,11 +117,7 @@ export function FormMonitorListClient() {
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-48">
-                          <DropdownMenuItem
-                            className="whitespace-nowrap"
-                            onClick={() => markFixed(site.id)}
-                            disabled={busy === site.id}
-                          >
+                          <DropdownMenuItem className="whitespace-nowrap" onClick={() => markFixed(site.id)} disabled={busy === site.id}>
                             <Check />
                             Mark Fixed
                           </DropdownMenuItem>

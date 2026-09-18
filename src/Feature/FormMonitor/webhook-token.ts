@@ -36,12 +36,29 @@ export async function rotateTrackingWebhookToken() {
   });
 }
 
-export async function saveMissingWebhookUrl(url: string | null) {
+export async function saveMissingSettings(input: {
+  missingWebhookUrl: string | null;
+  checkDelayMinutes: number;
+}) {
   await getFormMonitorSettings();
   return prisma.formMonitorSetting.update({
     where: { id: SETTING_ID },
-    data: { missingWebhookUrl: url },
+    data: {
+      missingWebhookUrl: input.missingWebhookUrl,
+      checkDelayMinutes: input.checkDelayMinutes,
+    },
   });
+}
+
+export function normalizeCheckDelayMinutes(value: unknown): number | null {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number.parseInt(value, 10)
+        : NaN;
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  return parsed;
 }
 
 export function trackingWebhookUrl(token: string): string {

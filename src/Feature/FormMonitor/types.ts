@@ -5,6 +5,7 @@ export type FormMonitorSiteSummary = {
   lastFormAt: string | null;
   lastTrackingAt: string | null;
   missingLast7Days: number;
+  status: "pass" | "fail";
 };
 
 export type FormMonitorDayBucket = {

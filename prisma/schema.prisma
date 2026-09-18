@@ -234,6 +234,7 @@ model FormMonitorSetting {
   id                   String   @id @default("default")
   trackingWebhookToken String   @unique
   missingWebhookUrl    String?
+  checkDelayMinutes    Int      @default(60)
   updatedAt            DateTime @updatedAt
 }
 

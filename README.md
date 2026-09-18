@@ -114,7 +114,7 @@ Isolated form vs tracking pipeline. Gravity Forms reports submissions; WhatConve
 | --- | --- | --- | --- |
 | POST | `/api/v1/form-monitor/events` | license key + site URL | Record a form submission (`reference_id`, optional form/entry ids) |
 | POST | `/api/v1/form-monitor/webhooks/tracking/:token` | unguessable URL | Record a tracking confirmation; ignored without `tacowp_reference_id` |
-| GET/POST | `/api/v1/form-monitor/settings` | session | Tracking webhook URL (copy/rotate) and outbound missing-tracking URL |
+| GET/POST | `/api/v1/form-monitor/settings` | session | Tracking webhook URL (copy/rotate), outbound missing-tracking URL, and check delay (minutes) |
 | GET | `/api/v1/form-monitor/sites` | session | Per-site last form, last tracking, missing last 7 days |
 | GET | `/api/v1/form-monitor/sites/:siteId` | session | 7-day submissions vs missing buckets, plus last 15 records |
 | POST | `/api/v1/form-monitor/sites/:siteId/mark-fixed` | session | Ignore unmatched form events for a site (`ignoredAt`) |
@@ -148,7 +148,7 @@ See [`.env.example`](.env.example) for all available configuration. Key groups:
 
 - **Database** -- `DATABASE_URL`
 - **Server** -- `SERVER_URL` (public-facing base URL for download links, connect flow, and MCP OAuth issuer)
-- **Form Monitor** -- optional `FORM_MONITOR_CHECK_DELAY_SECONDS` (default `3600`) for the delayed missing-tracking job. pg-boss uses the same `DATABASE_URL` (its own `pgboss` schema).
+- **Form Monitor** -- pg-boss uses the same `DATABASE_URL` (its own `pgboss` schema). Missing-tracking delay is configured in Form Monitor settings, not env.
 - **NextAuth** -- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
 - **MCP** -- optional `MCP_JWT_SECRET` (defaults to `NEXTAUTH_SECRET`)
 - **GitHub OAuth** (optional) -- `GITHUB_AUTH_ENABLED`, `GITHUB_AUTH_CLIENT_ID`, `GITHUB_AUTH_CLIENT_SECRET`, `GITHUB_AUTH_ALLOWED_ORG`

@@ -13,11 +13,13 @@ import { usePageHeader } from "@/components/page-header";
 type SettingsPayload = {
   trackingWebhookUrl: string;
   missingWebhookUrl: string | null;
+  checkDelayMinutes: number;
 };
 
 export function FormMonitorSettingsClient() {
   const [settings, setSettings] = useState<SettingsPayload | null>(null);
   const [missingUrl, setMissingUrl] = useState("");
+  const [delayMinutes, setDelayMinutes] = useState("60");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rotateOpen, setRotateOpen] = useState(false);
@@ -36,6 +38,7 @@ export function FormMonitorSettingsClient() {
       const data = (await res.json()) as SettingsPayload;
       setSettings(data);
       setMissingUrl(data.missingWebhookUrl ?? "");
+      setDelayMinutes(String(data.checkDelayMinutes ?? 60));
     }
     setLoading(false);
   }
@@ -69,22 +72,27 @@ export function FormMonitorSettingsClient() {
     setRotating(false);
   }
 
-  async function saveMissingUrl(e: React.FormEvent) {
+  async function saveMissingSettings(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     const res = await fetch("/api/v1/form-monitor/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "save-missing-url", missingWebhookUrl: missingUrl }),
+      body: JSON.stringify({
+        action: "save-missing",
+        missingWebhookUrl: missingUrl,
+        checkDelayMinutes: Number.parseInt(delayMinutes, 10),
+      }),
     });
     if (res.ok) {
       const data = (await res.json()) as SettingsPayload;
       setSettings(data);
       setMissingUrl(data.missingWebhookUrl ?? "");
-      toast.success("Missing-tracking webhook saved");
+      setDelayMinutes(String(data.checkDelayMinutes ?? 60));
+      toast.success("Missing-tracking settings saved");
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "Failed to save webhook URL");
+      toast.error(err.error || "Failed to save settings");
     }
     setSaving(false);
   }
@@ -122,12 +130,12 @@ export function FormMonitorSettingsClient() {
             <CardHeader>
               <CardTitle>Missing tracking webhook</CardTitle>
               <CardDescription>
-                Optional outbound URL. One hour after a form event, if tracking has not arrived, TacoWP
-                POSTs a JSON payload here once (no personal data). Leave blank to skip alerts.
+                Optional outbound URL. After the delay below, if tracking has not arrived, TacoWP POSTs a
+                JSON payload here once (no personal data). Leave the URL blank to skip alerts.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={saveMissingUrl} className="space-y-3">
+              <form onSubmit={saveMissingSettings} className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="missingWebhookUrl">Destination URL</Label>
                   <Input
@@ -136,6 +144,21 @@ export function FormMonitorSettingsClient() {
                     onChange={(event) => setMissingUrl(event.target.value)}
                     placeholder="https://hooks.example.com/form-monitor"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="checkDelayMinutes">Delay (minutes)</Label>
+                  <Input
+                    id="checkDelayMinutes"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={delayMinutes}
+                    onChange={(event) => setDelayMinutes(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    How long to wait after a form submission before checking for tracking. Default 60 (1
+                    hour).
+                  </p>
                 </div>
                 <Button type="submit" disabled={saving}>
                   {saving ? "Saving..." : "Save"}
