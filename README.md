@@ -84,7 +84,7 @@ Remote MCP for AI agents. Authenticate with OAuth (people) or a service client (
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET/POST | `/api/mcp` | Bearer JWT (`mcp:read`) | Streamable HTTP MCP. Tools: `sites-list`, `site-get`, `site-get-plugins`, `site-get-commands`, `site-list-tools`, `site-call-tool`, `platform-list-plugins`, `platform-get-plugin-installs`, `platform-get-command` |
+| GET/POST | `/api/mcp` | Bearer JWT (`mcp:read`) | Streamable HTTP MCP. Tools: `sites-list`, `site-get`, `site-get-plugins`, `site-get-commands`, `site-list-tools`, `site-call-tool`, `platform-list-plugins`, `platform-get-plugin-installs`, `platform-get-command`, `platform-form-monitor-list-sites`, `platform-form-monitor-list-events` |
 | GET | `/.well-known/oauth-protected-resource` | -- | RFC 9728 resource metadata |
 | GET | `/.well-known/oauth-authorization-server` | -- | RFC 8414 authorization server metadata |
 | GET | `/oauth/authorize` | NextAuth session | Authorization-code + PKCE consent |

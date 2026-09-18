@@ -9,6 +9,8 @@ import {
   getSiteCommands,
   getSitePlugins,
   listCatalogPlugins,
+  listFormMonitor,
+  listFormMonitorEvents,
   listSites,
 } from "./queries";
 import { callSiteTool, listSiteTools } from "./rpc";
@@ -168,6 +170,57 @@ export const mcpHandler = createMcpHandler(
       }
     );
 
+    const formMonitorSiteInput = z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe("Site id or URL. Pass a list or comma-separated values for several sites.");
+
+    server.registerTool(
+      toMcpToolName("platform/form-monitor/list-sites"),
+      {
+        title: byId["platform/form-monitor/list-sites"].title,
+        description: byId["platform/form-monitor/list-sites"].description,
+        inputSchema: z.object({
+          site: formMonitorSiteInput,
+          since: z.string().optional().describe("ISO start datetime. Defaults to 7 days before until."),
+          until: z.string().optional().describe("ISO end datetime. Defaults to now."),
+        }),
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ site, since, until }) => {
+        try {
+          return jsonResult(await listFormMonitor({ site, since, until }));
+        } catch (error) {
+          return errorResult(error);
+        }
+      }
+    );
+
+    server.registerTool(
+      toMcpToolName("platform/form-monitor/list-events"),
+      {
+        title: byId["platform/form-monitor/list-events"].title,
+        description: byId["platform/form-monitor/list-events"].description,
+        inputSchema: z.object({
+          site: formMonitorSiteInput,
+          since: z.string().optional().describe("ISO start datetime. Defaults to 7 days before until."),
+          until: z.string().optional().describe("ISO end datetime. Defaults to now."),
+          missing_only: z
+            .boolean()
+            .optional()
+            .describe("If true, only unmatched submissions that are not marked fixed. Defaults to true."),
+        }),
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+      },
+      async ({ site, since, until, missing_only }) => {
+        try {
+          return jsonResult(await listFormMonitorEvents({ site, since, until, missing_only }));
+        } catch (error) {
+          return errorResult(error);
+        }
+      }
+    );
+
     server.registerTool(
       toMcpToolName("site/list-tools"),
       {
@@ -211,7 +264,7 @@ export const mcpHandler = createMcpHandler(
   {
     serverInfo: { name: "tacowp", version: "0.1.0" },
     instructions:
-      "This is the TacoWP fleet registry. Use sites-list, site-get, and site-get-plugins for inventory. Discover WordPress plugin tools (Rank Math, core, etc.) with site-list-tools, then run them with site-call-tool.",
+      "This is the TacoWP fleet registry. Use sites-list, site-get, and site-get-plugins for inventory. Use platform-form-monitor-list-sites and platform-form-monitor-list-events for form vs tracking. Discover WordPress plugin tools (Rank Math, core, etc.) with site-list-tools, then run them with site-call-tool.",
   }
 );
 

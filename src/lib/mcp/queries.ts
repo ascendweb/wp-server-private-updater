@@ -4,6 +4,11 @@ import { findSiteByUrl } from "@/lib/license";
 import { getPluginRollout } from "@/lib/plugin-rollout";
 import { SITE_STATUS_ACTIVE, SITE_STATUS_ARCHIVED } from "@/lib/site-status";
 import { sortBySiteUrl } from "@/lib/site-url";
+import {
+  formMonitorRange,
+  listRecentFormEvents,
+  listSiteSummariesInRange,
+} from "@/Feature/FormMonitor/queries";
 
 export class McpQueryError extends Error {
   constructor(
@@ -239,5 +244,84 @@ export async function getCommand(commandId: string) {
   return {
     command: serializeCommand(command),
     site: publicSite(command.site),
+  };
+}
+
+function siteRefs(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function boolArg(value: unknown, defaultValue = false): boolean {
+  if (value === undefined || value === null || value === "") return defaultValue;
+  if (value === false || value === "false" || value === "0") return false;
+  return value === true || value === "true" || value === "1";
+}
+
+async function resolveSiteIds(value: unknown): Promise<string[] | undefined> {
+  const refs = siteRefs(value);
+  if (refs.length === 0) return undefined;
+  const sites = await Promise.all(refs.map((ref) => resolveSite(ref)));
+  return [...new Set(sites.map((site) => site.id))];
+}
+
+function formMonitorWindow(since?: string, until?: string) {
+  try {
+    return formMonitorRange(since, until);
+  } catch (error) {
+    throw new McpQueryError(error instanceof Error ? error.message : "Invalid date range", "bad_request");
+  }
+}
+
+export async function listFormMonitor(input: {
+  site?: unknown;
+  since?: string;
+  until?: string;
+}) {
+  const range = formMonitorWindow(input.since, input.until);
+  const siteIds = await resolveSiteIds(input.site);
+  const sites = await listSiteSummariesInRange({
+    siteIds,
+    since: range.since,
+    until: range.until,
+  });
+  return {
+    since: range.since.toISOString(),
+    until: range.until.toISOString(),
+    sites,
+  };
+}
+
+export async function listFormMonitorEvents(input: {
+  site?: unknown;
+  since?: string;
+  until?: string;
+  missing_only?: unknown;
+}) {
+  const range = formMonitorWindow(input.since, input.until);
+  const siteIds = await resolveSiteIds(input.site);
+  const missingOnly = boolArg(input.missing_only, true);
+  const events = await listRecentFormEvents({
+    siteIds,
+    since: range.since,
+    until: range.until,
+    missingOnly,
+  });
+  return {
+    since: range.since.toISOString(),
+    until: range.until.toISOString(),
+    missingOnly,
+    events,
   };
 }

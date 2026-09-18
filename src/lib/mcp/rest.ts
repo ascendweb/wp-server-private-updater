@@ -10,6 +10,8 @@ import {
   getSiteCommands,
   getSitePlugins,
   listCatalogPlugins,
+  listFormMonitor,
+  listFormMonitorEvents,
   listSites,
 } from "./queries";
 import { callSiteTool, listSiteTools } from "./rpc";
@@ -137,6 +139,19 @@ async function executeAbility(id: string, args: Record<string, unknown>) {
       return getPluginInstalls(stringArg(args, "plugin"));
     case "platform/get-command":
       return getCommand(stringArg(args, "command_id"));
+    case "platform/form-monitor/list-sites":
+      return listFormMonitor({
+        site: args.site ?? args.sites,
+        since: stringArg(args, "since") || undefined,
+        until: stringArg(args, "until") || undefined,
+      });
+    case "platform/form-monitor/list-events":
+      return listFormMonitorEvents({
+        site: args.site ?? args.sites,
+        since: stringArg(args, "since") || undefined,
+        until: stringArg(args, "until") || undefined,
+        missing_only: args.missing_only,
+      });
     case "site/list-tools":
       return listSiteTools(stringArg(args, "site"));
     case "site/call-tool":

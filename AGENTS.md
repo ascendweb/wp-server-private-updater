@@ -75,7 +75,7 @@ Optional `wpe-auth` cookie is stored on `Site` when the worker returns it, so la
 
 ## MCP
 
-`POST /api/mcp` is the fleet MCP. Catalog IDs use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`); MCP wire names replace `/` with `-` (`sites-list`) because ChatGPT/OpenAI reject slashes in tool names. v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`.
+`POST /api/mcp` is the fleet MCP. Catalog IDs use `platform/`, `sites/`, and `site/` (see `src/lib/mcp/abilities.ts`); MCP wire names replace `/` with `-` (`sites-list`) because ChatGPT/OpenAI reject slashes in tool names. v1 tools read inventory from Postgres and must omit `siteToken`, `wpeAuth`, license keys, and `packageUrl`. Form Monitor tools (`platform/form-monitor/list-sites`, `platform/form-monitor/list-events`) read form vs tracking from Postgres only.
 
 Do not wrap each WordPress plugin ability (Rank Math, core, …). Those are discovered via `site-list-tools` / `site-call-tool`. The agent still calls the wrapper; the **payload** matches a direct ability execute.
 

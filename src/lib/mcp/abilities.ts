@@ -21,6 +21,8 @@ export function toMcpToolName(id: string) {
 
 export function fromMcpToolName(name: string) {
   if (name.includes("/")) return name;
+  const matched = ABILITIES.find((ability) => toMcpToolName(ability.id) === name);
+  if (matched) return matched.id;
   const underscore = name.indexOf("_");
   const hyphen = name.indexOf("-");
   const separator =
@@ -174,6 +176,24 @@ export const ABILITIES: AbilityDef[] = [
     id: "platform/get-command",
     title: "Get command",
     description: "Get one remote command by id (status, result, timestamps).",
+    access: "read",
+    backend: "db",
+    ship: "v1",
+  },
+  {
+    id: "platform/form-monitor/list-sites",
+    title: "List form monitor sites",
+    description:
+      "Form vs tracking status per site. Defaults to the last 7 days. Optional site (id or URL, comma-separated or list) and since/until ISO dates. Returns last form, last tracking, missing count in the window, and pass/fail.",
+    access: "read",
+    backend: "db",
+    ship: "v1",
+  },
+  {
+    id: "platform/form-monitor/list-events",
+    title: "List form monitor events",
+    description:
+      "Latest 15 form submissions. Defaults to the last 7 days and to missing_only=true (unmatched, not marked fixed). Optional site, since/until ISO dates, and missing_only=false for all events.",
     access: "read",
     backend: "db",
     ship: "v1",
