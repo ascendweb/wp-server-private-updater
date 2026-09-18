@@ -5,6 +5,7 @@ import { VisitSiteLink } from "@/components/visit-site-link";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { getSiteChart } from "@/Feature/FormMonitor/queries";
 import { FormMonitorSiteChartCard } from "../form-monitor-chart";
+import { FormMonitorRecords } from "../form-monitor-records";
 
 export async function generateMetadata({
   params,
@@ -41,6 +42,7 @@ export default async function FormMonitorSitePage({
         <VisitSiteLink url={data.site.url} />
       </p>
       <FormMonitorSiteChartCard days={data.days} />
+      <FormMonitorRecords records={data.records} />
     </div>
   );
 }

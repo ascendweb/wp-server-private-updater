@@ -116,7 +116,8 @@ Isolated form vs tracking pipeline. Gravity Forms reports submissions; WhatConve
 | POST | `/api/v1/form-monitor/webhooks/tracking/:token` | unguessable URL | Record a tracking confirmation; ignored without `tacowp_reference_id` |
 | GET/POST | `/api/v1/form-monitor/settings` | session | Tracking webhook URL (copy/rotate) and outbound missing-tracking URL |
 | GET | `/api/v1/form-monitor/sites` | session | Per-site last form, last tracking, missing last 7 days |
-| GET | `/api/v1/form-monitor/sites/:siteId` | session | 7-day submissions vs missing buckets |
+| GET | `/api/v1/form-monitor/sites/:siteId` | session | 7-day submissions vs missing buckets, plus last 15 records |
+| POST | `/api/v1/form-monitor/sites/:siteId/mark-fixed` | session | Ignore unmatched form events for a site (`ignoredAt`) |
 
 ### Commands (siteToken)
 

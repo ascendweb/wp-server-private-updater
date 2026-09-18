@@ -12,3 +12,14 @@ export type FormMonitorDayBucket = {
   submissions: number;
   missing: number;
 };
+
+export type FormMonitorLeadRecord = {
+  id: string;
+  referenceId: string;
+  formTitle: string | null;
+  formId: number | null;
+  entryId: number | null;
+  formReceivedAt: string | null;
+  trackingReceivedAt: string | null;
+  ignoredAt: string | null;
+};

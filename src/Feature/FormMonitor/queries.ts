@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { activeSiteWhere } from "@/lib/site-status";
 import { sortBySiteUrl } from "@/lib/site-url";
-import type { FormMonitorDayBucket, FormMonitorSiteSummary } from "./types";
+import type { FormMonitorDayBucket, FormMonitorLeadRecord, FormMonitorSiteSummary } from "./types";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -41,6 +41,7 @@ export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
         siteId: { in: siteIds },
         formReceivedAt: { gte: since },
         trackingReceivedAt: null,
+        ignoredAt: null,
       },
       _count: { _all: true },
     }),
@@ -75,7 +76,7 @@ function emptyWeekBuckets(start: Date): FormMonitorDayBucket[] {
 }
 
 function fillDayBuckets(
-  leads: { formReceivedAt: Date | null; trackingReceivedAt: Date | null }[],
+  leads: { formReceivedAt: Date | null; trackingReceivedAt: Date | null; ignoredAt: Date | null }[],
   start: Date
 ): FormMonitorDayBucket[] {
   const buckets = emptyWeekBuckets(start);
@@ -86,7 +87,7 @@ function fillDayBuckets(
     const bucket = byDate.get(utcDateKey(lead.formReceivedAt));
     if (!bucket) continue;
     bucket.submissions += 1;
-    if (!lead.trackingReceivedAt) bucket.missing += 1;
+    if (!lead.trackingReceivedAt && !lead.ignoredAt) bucket.missing += 1;
   }
 
   return buckets;
@@ -114,6 +115,7 @@ export async function listOverview(): Promise<{
           select: {
             formReceivedAt: true,
             trackingReceivedAt: true,
+            ignoredAt: true,
           },
         });
 
@@ -131,16 +133,34 @@ export async function getSiteChart(siteId: string) {
   if (!site) return null;
 
   const start = chartWindowStart();
-  const leads = await prisma.formMonitorLead.findMany({
-    where: {
-      siteId,
-      formReceivedAt: { gte: start },
-    },
-    select: {
-      formReceivedAt: true,
-      trackingReceivedAt: true,
-    },
-  });
+  const [leads, recent] = await Promise.all([
+    prisma.formMonitorLead.findMany({
+      where: {
+        siteId,
+        formReceivedAt: { gte: start },
+      },
+      select: {
+        formReceivedAt: true,
+        trackingReceivedAt: true,
+        ignoredAt: true,
+      },
+    }),
+    prisma.formMonitorLead.findMany({
+      where: { siteId },
+      orderBy: { createdAt: "desc" },
+      take: 15,
+      select: {
+        id: true,
+        referenceId: true,
+        formTitle: true,
+        formId: true,
+        entryId: true,
+        formReceivedAt: true,
+        trackingReceivedAt: true,
+        ignoredAt: true,
+      },
+    }),
+  ]);
 
   return {
     site: {
@@ -149,5 +169,41 @@ export async function getSiteChart(siteId: string) {
       label: site.label,
     },
     days: fillDayBuckets(leads, start),
+    records: recent.map(serializeLeadRecord),
+  };
+}
+
+export async function markSiteMissingIgnored(siteId: string): Promise<number> {
+  const result = await prisma.formMonitorLead.updateMany({
+    where: {
+      siteId,
+      formReceivedAt: { not: null },
+      trackingReceivedAt: null,
+      ignoredAt: null,
+    },
+    data: { ignoredAt: new Date() },
+  });
+  return result.count;
+}
+
+function serializeLeadRecord(lead: {
+  id: string;
+  referenceId: string;
+  formTitle: string | null;
+  formId: number | null;
+  entryId: number | null;
+  formReceivedAt: Date | null;
+  trackingReceivedAt: Date | null;
+  ignoredAt: Date | null;
+}): FormMonitorLeadRecord {
+  return {
+    id: lead.id,
+    referenceId: lead.referenceId,
+    formTitle: lead.formTitle,
+    formId: lead.formId,
+    entryId: lead.entryId,
+    formReceivedAt: lead.formReceivedAt?.toISOString() ?? null,
+    trackingReceivedAt: lead.trackingReceivedAt?.toISOString() ?? null,
+    ignoredAt: lead.ignoredAt?.toISOString() ?? null,
   };
 }
