@@ -33,7 +33,13 @@ export function SitesListClient({ archived }: { archived: boolean }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
 
-  usePageHeader(archived ? "Archived Sites" : "Sites");
+  usePageHeader(
+    archived ? "Archived" : "Sites",
+    undefined,
+    archived
+      ? { crumbs: [{ label: "Sites", href: "/sites" }, { label: "Archived" }] }
+      : undefined,
+  );
 
   async function handleSiteCommand(siteId: string, type: "refresh" | "purge_cache") {
     const key = `${type}-${siteId}`;
@@ -163,13 +169,7 @@ export function SitesListClient({ archived }: { archived: boolean }) {
         </CardContent>
       </Card>
 
-      {archived ? (
-        <p className="text-center">
-          <Link href="/sites" className="text-sm text-muted-foreground hover:underline">
-            Back to sites
-          </Link>
-        </p>
-      ) : (
+      {!archived && (
         <p className="text-center">
           <Link href="/sites/archived" className="text-sm text-muted-foreground hover:underline">
             View archived sites

@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { SetPageHeader } from "@/components/set-page-header";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { getSiteChart } from "@/Feature/FormMonitor/queries";
-import { FormMonitorSiteChartCard } from "./form-monitor-chart";
+import { FormMonitorSiteChartCard } from "../form-monitor-chart";
 
 export async function generateMetadata({
   params,
@@ -26,18 +25,21 @@ export default async function FormMonitorSitePage({
   const data = await getSiteChart(siteId);
   if (!data) notFound();
 
+  const title = formatSiteTitle(data.site.url, data.site.label);
+
   return (
     <div className="space-y-6">
-      <SetPageHeader title={formatSiteTitle(data.site.url, data.site.label)} />
-      <div>
-        <Link href="/form-monitor" className="text-sm text-muted-foreground hover:underline">
-          ← Back to Form Monitor
-        </Link>
-        <p className="text-muted-foreground mt-1 flex items-center gap-2">
-          {formatSiteHost(data.site.url)}
-          <VisitSiteLink url={data.site.url} />
-        </p>
-      </div>
+      <SetPageHeader
+        title={title}
+        crumbs={[
+          { label: "Form Monitor", href: "/form-monitor" },
+          { label: title },
+        ]}
+      />
+      <p className="text-muted-foreground flex items-center gap-2">
+        {formatSiteHost(data.site.url)}
+        <VisitSiteLink url={data.site.url} />
+      </p>
       <FormMonitorSiteChartCard days={data.days} />
     </div>
   );

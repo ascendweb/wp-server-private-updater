@@ -39,8 +39,13 @@ export function FormMonitorChart({ days }: { days: FormMonitorDayBucket[] }) {
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={36} />
-          <Tooltip />
-          <Legend />
+          <Tooltip itemSorter={(item) => (item.dataKey === "submissions" ? 0 : 1)} />
+          <Legend
+            payload={[
+              { value: "Submissions", type: "line", color: "var(--chart-1)", id: "submissions" },
+              { value: "Missing Tracking", type: "line", color: "var(--chart-2)", id: "missing" },
+            ]}
+          />
           <Line
             type="monotone"
             dataKey="submissions"
@@ -52,7 +57,7 @@ export function FormMonitorChart({ days }: { days: FormMonitorDayBucket[] }) {
           <Line
             type="monotone"
             dataKey="missing"
-            name="Missing tracking"
+            name="Missing Tracking"
             stroke="var(--chart-2)"
             strokeWidth={2}
             dot={false}
@@ -63,14 +68,20 @@ export function FormMonitorChart({ days }: { days: FormMonitorDayBucket[] }) {
   );
 }
 
-export function FormMonitorSiteChartCard({ days }: { days: FormMonitorDayBucket[] }) {
+export function FormMonitorSiteChartCard({
+  days,
+  title = "Last 7 days",
+  description = "Submissions are form events. Missing is those still without a tracking confirmation.",
+}: {
+  days: FormMonitorDayBucket[];
+  title?: string;
+  description?: string;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Last 7 days</CardTitle>
-        <CardDescription>
-          Submissions are form events. Missing is those still without a tracking confirmation.
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <FormMonitorChart days={days} />

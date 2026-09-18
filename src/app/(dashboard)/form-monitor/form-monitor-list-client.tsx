@@ -12,7 +12,8 @@ import { usePageHeader } from "@/components/page-header";
 import { formatSiteHost } from "@/lib/site-url";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { cn } from "@/lib/utils";
-import type { FormMonitorSiteSummary } from "@/Feature/FormMonitor/types";
+import type { FormMonitorDayBucket, FormMonitorSiteSummary } from "@/Feature/FormMonitor/types";
+import { FormMonitorSiteChartCard } from "./form-monitor-chart";
 
 function formatWhen(value: string | null) {
   if (!value) return "—";
@@ -22,6 +23,7 @@ function formatWhen(value: string | null) {
 export function FormMonitorListClient() {
   const router = useRouter();
   const [sites, setSites] = useState<FormMonitorSiteSummary[]>([]);
+  const [days, setDays] = useState<FormMonitorDayBucket[]>([]);
   const [loading, setLoading] = useState(true);
 
   usePageHeader(
@@ -39,7 +41,9 @@ export function FormMonitorListClient() {
     async function load() {
       const res = await fetch("/api/v1/form-monitor/sites");
       if (res.ok) {
-        setSites(await res.json());
+        const data = await res.json();
+        setSites(data.sites ?? []);
+        setDays(data.days ?? []);
       }
       setLoading(false);
     }
@@ -48,6 +52,11 @@ export function FormMonitorListClient() {
 
   return (
     <div className="space-y-6">
+      <FormMonitorSiteChartCard
+        days={days}
+        title="Last 7 days"
+        description="All sites. Submissions are form events. Missing is those still without a tracking confirmation."
+      />
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>

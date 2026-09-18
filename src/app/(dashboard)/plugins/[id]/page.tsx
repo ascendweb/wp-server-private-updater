@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { SetPageHeader } from "@/components/set-page-header";
 import { PluginDetailClient } from "./plugin-detail-client";
@@ -26,15 +25,16 @@ export default async function PluginDetailPage({
 
   return (
     <div className="space-y-6">
-      <SetPageHeader title={data.plugin.name} />
-      <div>
-        <Link href="/plugins" className="text-sm text-muted-foreground hover:underline">
-          &larr; Back to Plugins
-        </Link>
-        {data.plugin.description && (
-          <p className="text-muted-foreground mt-1">{data.plugin.description}</p>
-        )}
-      </div>
+      <SetPageHeader
+        title={data.plugin.name}
+        crumbs={[
+          { label: "Plugins", href: "/plugins" },
+          { label: data.plugin.name },
+        ]}
+      />
+      {data.plugin.description && (
+        <p className="text-muted-foreground">{data.plugin.description}</p>
+      )}
 
       <PluginDetailClient
         key={data.plugin.id}

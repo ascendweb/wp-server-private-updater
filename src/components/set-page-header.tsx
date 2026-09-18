@@ -1,8 +1,16 @@
 "use client";
 
-import { usePageHeader } from "./page-header";
+import { usePageHeader, type HeaderCrumb } from "./page-header";
 
-export function SetPageHeader({ title }: { title: string }) {
-  usePageHeader(title);
+export function SetPageHeader({
+  title,
+  crumbs,
+  backHref,
+}: {
+  title: string;
+  crumbs?: HeaderCrumb[];
+  backHref?: string;
+}) {
+  usePageHeader(title, undefined, { crumbs, backHref });
   return null;
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,12 @@ export function FormMonitorSettingsClient() {
   const [rotateOpen, setRotateOpen] = useState(false);
   const [rotating, setRotating] = useState(false);
 
-  usePageHeader("Form Monitor settings");
+  usePageHeader("Settings", undefined, {
+    crumbs: [
+      { label: "Form Monitor", href: "/form-monitor" },
+      { label: "Settings" },
+    ],
+  });
 
   async function load() {
     const res = await fetch("/api/v1/form-monitor/settings");
@@ -87,10 +91,6 @@ export function FormMonitorSettingsClient() {
 
   return (
     <div className="space-y-6">
-      <Link href="/form-monitor" className="text-sm text-muted-foreground hover:underline">
-        ← Back to Form Monitor
-      </Link>
-
       {loading || !settings ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (

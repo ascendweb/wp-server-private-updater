@@ -65,6 +65,64 @@ export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
   );
 }
 
+function emptyWeekBuckets(start: Date): FormMonitorDayBucket[] {
+  const buckets: FormMonitorDayBucket[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    const day = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+    buckets.push({ date: utcDateKey(day), submissions: 0, missing: 0 });
+  }
+  return buckets;
+}
+
+function fillDayBuckets(
+  leads: { formReceivedAt: Date | null; trackingReceivedAt: Date | null }[],
+  start: Date
+): FormMonitorDayBucket[] {
+  const buckets = emptyWeekBuckets(start);
+  const byDate = new Map(buckets.map((bucket) => [bucket.date, bucket]));
+
+  for (const lead of leads) {
+    if (!lead.formReceivedAt) continue;
+    const bucket = byDate.get(utcDateKey(lead.formReceivedAt));
+    if (!bucket) continue;
+    bucket.submissions += 1;
+    if (!lead.trackingReceivedAt) bucket.missing += 1;
+  }
+
+  return buckets;
+}
+
+function chartWindowStart(): Date {
+  return startOfUtcDay(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+}
+
+export async function listOverview(): Promise<{
+  sites: FormMonitorSiteSummary[];
+  days: FormMonitorDayBucket[];
+}> {
+  const sites = await listSiteSummaries();
+  const start = chartWindowStart();
+  const siteIds = sites.map((site) => site.id);
+  const leads =
+    siteIds.length === 0
+      ? []
+      : await prisma.formMonitorLead.findMany({
+          where: {
+            siteId: { in: siteIds },
+            formReceivedAt: { gte: start },
+          },
+          select: {
+            formReceivedAt: true,
+            trackingReceivedAt: true,
+          },
+        });
+
+  return {
+    sites,
+    days: fillDayBuckets(leads, start),
+  };
+}
+
 export async function getSiteChart(siteId: string) {
   const site = await prisma.site.findUnique({
     where: { id: siteId },
@@ -72,7 +130,7 @@ export async function getSiteChart(siteId: string) {
   });
   if (!site) return null;
 
-  const start = startOfUtcDay(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+  const start = chartWindowStart();
   const leads = await prisma.formMonitorLead.findMany({
     where: {
       siteId,
@@ -84,27 +142,12 @@ export async function getSiteChart(siteId: string) {
     },
   });
 
-  const buckets: FormMonitorDayBucket[] = [];
-  for (let i = 0; i < 7; i += 1) {
-    const day = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
-    buckets.push({ date: utcDateKey(day), submissions: 0, missing: 0 });
-  }
-  const byDate = new Map(buckets.map((bucket) => [bucket.date, bucket]));
-
-  for (const lead of leads) {
-    if (!lead.formReceivedAt) continue;
-    const bucket = byDate.get(utcDateKey(lead.formReceivedAt));
-    if (!bucket) continue;
-    bucket.submissions += 1;
-    if (!lead.trackingReceivedAt) bucket.missing += 1;
-  }
-
   return {
     site: {
       id: site.id,
       url: site.url,
       label: site.label,
     },
-    days: buckets,
+    days: fillDayBuckets(leads, start),
   };
 }

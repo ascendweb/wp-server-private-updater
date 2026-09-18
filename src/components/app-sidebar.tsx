@@ -5,14 +5,14 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, KeyRound, Globe, Settings, LogOut, ChevronUp, User, Users, Puzzle, ClipboardList } from "lucide-react";
+import { LayoutDashboard, KeyRound, Globe, Settings, LogOut, ChevronUp, User, Users, Puzzle, Form } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Plugins", href: "/plugins", icon: Puzzle },
   { title: "Licenses", href: "/licenses", icon: KeyRound },
   { title: "Sites", href: "/sites", icon: Globe },
-  { title: "Form Monitor", href: "/form-monitor", icon: ClipboardList },
+  { title: "Form Monitor", href: "/form-monitor", icon: Form },
   { title: "Users", href: "/users", icon: Users },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

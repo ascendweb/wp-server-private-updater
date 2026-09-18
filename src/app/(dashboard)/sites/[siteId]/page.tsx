@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { SetPageHeader } from "@/components/set-page-header";
@@ -50,6 +49,7 @@ export default async function SiteDetailPage({
   if (!site) notFound();
 
   const archived = site.status === SITE_STATUS_ARCHIVED;
+  const title = formatSiteTitle(site.url, site.label);
 
   const allServerPlugins = await prisma.plugin.findMany({
     orderBy: { name: "asc" },
@@ -63,17 +63,20 @@ export default async function SiteDetailPage({
 
   return (
     <div className="space-y-6">
-      <SetPageHeader title={formatSiteTitle(site.url, site.label)} />
-      <div>
-        <Link href={archived ? "/sites/archived" : "/sites"} className="text-sm text-muted-foreground hover:underline">
-          {archived ? "\u2190 Back to Archived Sites" : "\u2190 Back to Sites"}
-        </Link>
-        <p className="text-muted-foreground mt-1 flex items-center gap-2">
-          {formatSiteHost(site.url)}
-          <VisitSiteLink url={site.url} />
-          {archived && <Badge variant="subtle">Archived</Badge>}
-        </p>
-      </div>
+      <SetPageHeader
+        title={title}
+        crumbs={[
+          archived
+            ? { label: "Archived Sites", href: "/sites/archived" }
+            : { label: "Sites", href: "/sites" },
+          { label: title },
+        ]}
+      />
+      <p className="text-muted-foreground flex items-center gap-2">
+        {formatSiteHost(site.url)}
+        <VisitSiteLink url={site.url} />
+        {archived && <Badge variant="subtle">Archived</Badge>}
+      </p>
 
       <SiteDetailClient
         site={{
