@@ -122,19 +122,11 @@ export function FormMonitorListClient() {
 
   return (
     <div className="space-y-6">
-      <FormMonitorSiteChartCard
-        days={days}
-        totals={totals}
-        title="Form submissions"
-        range={search.get("range")}
-        since={search.get("since")}
-        until={search.get("until")}
-        includeSpam={includeSpam}
-      />
+      <FormMonitorSiteChartCard days={days} totals={totals} title="Form submissions" range={search.get("range")} since={search.get("since")} until={search.get("until")} includeSpam={includeSpam} />
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>
-          <CardDescription>Total and missing are non-spam submissions in the selected period. The arrow compares that daily volume with the 30 days ending on the period’s last complete day.</CardDescription>
+          <CardDescription>Breakdown of form submissions per site.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -150,7 +142,7 @@ export function FormMonitorListClient() {
                   <TableHead>Last Tracking</TableHead>
                   <TableHead># Tracked</TableHead>
                   <TableHead>Tracking</TableHead>
-                  <TableHead>Volume</TableHead>
+                  <TableHead>Trend</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>

@@ -19,26 +19,14 @@ function seriesOrder(dataKey: unknown) {
 
 export function FormMonitorPeriodStats({ totals, includeSpam }: { totals: FormMonitorTotals; includeSpam: boolean }) {
   const percent = totals.trackedRate === null ? null : Math.round(totals.trackedRate * 100);
-  const rateClass =
-    percent === null
-      ? "text-muted-foreground"
-      : percent >= 100
-        ? "text-green-700"
-        : percent > 80
-          ? "text-orange-700"
-          : "text-red-700";
+  const rateClass = percent === null ? "text-muted-foreground" : percent >= 100 ? "text-green-700" : percent > 80 ? "text-orange-700" : "text-red-700";
 
-  const items = [
-    { label: "Tracking", value: percent === null ? "N/A" : `${percent}%`, className: rateClass },
-    { label: "Submitted", value: String(totals.submitted), className: "text-foreground" },
-    { label: "Missing", value: String(totals.missing), className: "text-foreground" },
-    ...(includeSpam ? [{ label: "Spam", value: String(totals.spam), className: "text-foreground" }] : []),
-  ];
+  const items = [{ label: "Tracking", value: percent === null ? "N/A" : `${percent}%`, className: rateClass }, { label: "Submitted", value: String(totals.submitted), className: "text-foreground" }, { label: "Missing", value: String(totals.missing), className: "text-foreground" }, ...(includeSpam ? [{ label: "Spam", value: String(totals.spam), className: "text-foreground" }] : [])];
 
   return (
     <div className="mb-4 flex flex-wrap gap-6">
       {items.map((item) => (
-        <div key={item.label}>
+        <div className="grow py-1 px-3 rounded-lg border-border" key={item.label}>
           <div className="text-xs text-muted-foreground">{item.label}</div>
           <div className={`text-lg font-semibold ${item.className}`}>{item.value}</div>
         </div>
@@ -71,50 +59,19 @@ export function FormMonitorChart({ days, includeSpam }: { days: FormMonitorDayBu
           <Legend itemSorter={(item) => seriesOrder(item.dataKey)} />
           <Line type="monotone" dataKey="submissions" name="Submissions" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="missing" name="Missing Tracking" stroke="var(--chart-2)" strokeWidth={2} dot={false} />
-          {includeSpam ? (
-            <Line
-              type="monotone"
-              dataKey="spam"
-              name="Spam"
-              stroke="var(--chart-4)"
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              strokeOpacity={0.7}
-              dot={false}
-            />
-          ) : null}
+          {includeSpam ? <Line type="monotone" dataKey="spam" name="Spam" stroke="var(--chart-4)" strokeWidth={2} strokeDasharray="4 4" strokeOpacity={0.7} dot={false} /> : null}
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-export function FormMonitorSiteChartCard({
-  days,
-  totals,
-  title = "Form submissions",
-  range,
-  since,
-  until,
-  includeSpam,
-}: {
-  days: FormMonitorDayBucket[];
-  totals: FormMonitorTotals;
-  title?: string;
-  range?: string | null;
-  since?: string | null;
-  until?: string | null;
-  includeSpam: boolean;
-}) {
+export function FormMonitorSiteChartCard({ days, totals, title = "Form Submissions", range, since, until, includeSpam }: { days: FormMonitorDayBucket[]; totals: FormMonitorTotals; title?: string; range?: string | null; since?: string | null; until?: string | null; includeSpam: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {includeSpam
-            ? "Submitted and missing exclude spam. Spam is shown separately."
-            : "Submitted and missing exclude spam."}
-        </CardDescription>
+        <CardTitle className="text-2xl font-bold">{title}</CardTitle>
+        <CardDescription>View trends in form submissions.</CardDescription>
         <CardAction>
           <FormMonitorRangeControl range={range} since={since} until={until} includeSpam={includeSpam} />
         </CardAction>
