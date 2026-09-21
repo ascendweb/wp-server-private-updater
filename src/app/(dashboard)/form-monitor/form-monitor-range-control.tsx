@@ -108,7 +108,7 @@ export function FormMonitorRangeControl({
       >
         <PopoverTrigger
           render={
-            <Button variant="subtle" size="sm" className="justify-start px-2.5 font-normal" />
+            <Button variant="subtle" className="h-9 justify-start rounded-lg px-2.5 text-sm font-normal" />
           }
         >
           <CalendarIcon />
@@ -153,10 +153,15 @@ export function FormMonitorRangeControl({
           visit({ id: resolved.id, includeSpam: value === "include" });
         }}
       >
-        <SelectTrigger className="h-9 min-w-36 border-transparent bg-muted font-normal hover:bg-muted/80 data-[size=default]:h-9 dark:border-transparent dark:bg-muted/50 dark:hover:bg-muted/80">
+        <SelectTrigger className="h-9 min-w-36 rounded-lg border-transparent bg-muted px-2.5 text-sm font-normal hover:bg-muted/80 data-[size=default]:h-9 dark:border-transparent dark:bg-muted/50 dark:hover:bg-muted/80">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent
+          side="bottom"
+          align="start"
+          alignItemWithTrigger={false}
+          collisionAvoidance={{ side: "shift", align: "shift", fallbackAxisSide: "none" }}
+        >
           {SPAM_ITEMS.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               {item.label}

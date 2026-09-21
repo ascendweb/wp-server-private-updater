@@ -45,11 +45,11 @@ export function FormMonitorChart({ days, includeSpam }: { days: FormMonitorDayBu
   }));
 
   if (!mounted) {
-    return <div className="h-80 w-full" />;
+    return <div className="h-80 w-full rounded-lg bg-chart p-2" />;
   }
 
   return (
-    <div className="h-80 w-full [&_.recharts-surface]:focus:outline-none [&_.recharts-surface]:focus-visible:outline-none [&_.recharts-wrapper]:focus:outline-none [&_.recharts-wrapper]:focus-visible:outline-none">
+    <div className="h-80 w-full rounded-lg bg-chart p-2 [&_.recharts-surface]:focus:outline-none [&_.recharts-surface]:focus-visible:outline-none [&_.recharts-wrapper]:focus:outline-none [&_.recharts-wrapper]:focus-visible:outline-none">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
