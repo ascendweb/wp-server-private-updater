@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, MoreHorizontal, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,15 +15,61 @@ import { formatSiteHost } from "@/lib/site-url";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { RelativeTime } from "@/components/relative-time";
 import { cn } from "@/lib/utils";
-import type { FormMonitorDayBucket, FormMonitorSiteSummary } from "@/Feature/FormMonitor/types";
+import { formMonitorRangeQuery, resolveFormMonitorRange, utcDayKey } from "@/Feature/FormMonitor/range";
+import type { FormMonitorDayBucket, FormMonitorSiteSummary, FormMonitorTotals, FormMonitorTrend } from "@/Feature/FormMonitor/types";
+import { FormMonitorRangeControl } from "./form-monitor-range-control";
 import { FormMonitorSiteChartCard } from "./form-monitor-chart";
+
+const emptyTotals: FormMonitorTotals = { submitted: 0, missing: 0, spam: 0, trackedRate: null };
+
+function overviewQuery(rangeId: string, sinceKey: string, untilKey: string) {
+  const params = new URLSearchParams();
+  if (rangeId !== "last-7") params.set("range", rangeId);
+  if (rangeId === "custom") {
+    params.set("since", sinceKey);
+    params.set("until", untilKey);
+  }
+  return `/api/v1/form-monitor/sites?${params}`;
+}
+
+function rateBadge(rate: number | null) {
+  if (rate === null) return <Badge variant="subtle">N/A</Badge>;
+  const percent = Math.round(rate * 100);
+  const label = `${percent}%`;
+  if (percent >= 100) return <Badge variant="success">{label}</Badge>;
+  if (percent > 80) return <Badge variant="warn">{label}</Badge>;
+  return <Badge variant="error">{label}</Badge>;
+}
+
+function trendMark(trend: FormMonitorTrend) {
+  if (trend.direction === "flat") return <span className="text-muted-foreground">—</span>;
+  const up = trend.direction === "up";
+  return (
+    <span className={up ? "text-green-700" : "text-red-700"}>
+      {up ? "↑" : "↓"}
+      {trend.percent === null ? "" : ` ${trend.percent}%`}
+    </span>
+  );
+}
 
 export function FormMonitorListClient() {
   const router = useRouter();
+  const search = useSearchParams();
+  const range = resolveFormMonitorRange({
+    range: search.get("range"),
+    since: search.get("since"),
+    until: search.get("until"),
+  });
   const [sites, setSites] = useState<FormMonitorSiteSummary[]>([]);
   const [days, setDays] = useState<FormMonitorDayBucket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [totals, setTotals] = useState<FormMonitorTotals>(emptyTotals);
   const [busy, setBusy] = useState<string | null>(null);
+  const rangeQuery = formMonitorRangeQuery(range);
+  const sinceKey = utcDayKey(range.since);
+  const untilKey = utcDayKey(range.until);
+  const rangeKey = `${range.id}:${sinceKey}:${untilKey}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== rangeKey;
 
   usePageHeader(
     "Form Monitor",
@@ -32,19 +78,22 @@ export function FormMonitorListClient() {
     </Link>,
   );
 
-  const load = useCallback(async () => {
-    const res = await fetch("/api/v1/form-monitor/sites");
-    if (res.ok) {
-      const data = await res.json();
-      setSites(data.sites ?? []);
-      setDays(data.days ?? []);
-    }
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    fetch(overviewQuery(range.id, sinceKey, untilKey)).then(async (res) => {
+      if (cancelled) return;
+      if (res.ok) {
+        const data = await res.json();
+        setSites(data.sites ?? []);
+        setDays(data.days ?? []);
+        setTotals(data.totals ?? emptyTotals);
+      }
+      setLoadedKey(rangeKey);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [range.id, sinceKey, untilKey, rangeKey]);
 
   async function markFixed(siteId: string) {
     setBusy(siteId);
@@ -57,7 +106,13 @@ export function FormMonitorListClient() {
       const data = (await res.json()) as { count?: number };
       const count = data.count ?? 0;
       toast.success(count > 0 ? `Marked ${count} missing ${count === 1 ? "submission" : "submissions"} as fixed` : "No missing tracking to clear");
-      await load();
+      const refreshed = await fetch(overviewQuery(range.id, sinceKey, untilKey));
+      if (refreshed.ok) {
+        const overview = await refreshed.json();
+        setSites(overview.sites ?? []);
+        setDays(overview.days ?? []);
+        setTotals(overview.totals ?? emptyTotals);
+      }
     } catch {
       toast.error("Failed to mark as fixed");
     } finally {
@@ -67,11 +122,12 @@ export function FormMonitorListClient() {
 
   return (
     <div className="space-y-6">
-      <FormMonitorSiteChartCard days={days} title="Form Submissions" description="All form submissions from the last 7 days." />
+      <FormMonitorRangeControl range={search.get("range")} since={search.get("since")} until={search.get("until")} />
+      <FormMonitorSiteChartCard days={days} totals={totals} title="Form submissions" />
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>
-          <CardDescription>Form submissions vs tracking confirmations. Missing is unmatched form events from the last 7 days.</CardDescription>
+          <CardDescription>Total and missing are non-spam submissions in the selected period. The arrow compares that daily volume with the 30 days ending on the period’s last complete day.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -85,14 +141,15 @@ export function FormMonitorListClient() {
                   <TableHead>Site</TableHead>
                   <TableHead>Last Form</TableHead>
                   <TableHead>Last Tracking</TableHead>
-                  <TableHead>Missing Last 7 Days</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Total / Missing</TableHead>
+                  <TableHead>Tracking</TableHead>
+                  <TableHead>Volume</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sites.map((site) => (
-                  <TableRow key={site.id} className="cursor-pointer" onClick={() => router.push(`/form-monitor/${site.id}`)}>
+                  <TableRow key={site.id} className="cursor-pointer" onClick={() => router.push(`/form-monitor/${site.id}${rangeQuery}`)}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {formatSiteHost(site.url)}
@@ -106,11 +163,12 @@ export function FormMonitorListClient() {
                       <RelativeTime value={site.lastTrackingAt} />
                     </TableCell>
                     <TableCell>
-                      <Badge variant="subtle">{site.missingLast7Days}</Badge>
+                      <Badge variant="subtle">
+                        {site.submitted} / {site.missing}
+                      </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={site.status === "pass" ? "success" : "error"}>{site.status === "pass" ? "Passing" : "Failing"}</Badge>
-                    </TableCell>
+                    <TableCell>{rateBadge(site.trackedRate)}</TableCell>
+                    <TableCell>{trendMark(site.trend)}</TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>

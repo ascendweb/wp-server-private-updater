@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { license_key, site_url, reference_id, submitted_at, form_id, entry_id, form_title } = body as {
+  const { license_key, site_url, reference_id, submitted_at, form_id, entry_id, form_title, spam } = body as {
     license_key?: string;
     site_url?: string;
     reference_id?: string;
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     form_id?: unknown;
     entry_id?: unknown;
     form_title?: unknown;
+    spam?: unknown;
   };
 
   if (!license_key || !site_url || !reference_id) {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
     entryId: parseOptionalInt(entry_id),
     formTitle: typeof form_title === "string" && form_title.trim() ? form_title.trim() : null,
     submittedAt: parseSubmittedAt(submitted_at),
+    spam: spam === true,
   });
 
   return NextResponse.json({ success: true });

@@ -8,6 +8,7 @@ export async function recordFormEvent(input: {
   entryId: number | null;
   formTitle: string | null;
   submittedAt: Date;
+  spam: boolean;
 }) {
   const lead = await prisma.formMonitorLead.upsert({
     where: { referenceId: input.referenceId },
@@ -17,6 +18,7 @@ export async function recordFormEvent(input: {
       formId: input.formId,
       entryId: input.entryId,
       formTitle: input.formTitle,
+      isSpam: input.spam,
       formReceivedAt: input.submittedAt,
     },
     update: {
@@ -24,11 +26,12 @@ export async function recordFormEvent(input: {
       formId: input.formId ?? undefined,
       entryId: input.entryId ?? undefined,
       formTitle: input.formTitle ?? undefined,
+      isSpam: input.spam ? true : undefined,
       formReceivedAt: input.submittedAt,
     },
   });
 
-  if (!lead.trackingReceivedAt) {
+  if (!lead.trackingReceivedAt && !lead.isSpam) {
     await enqueueCheckTracking(input.referenceId);
   }
 

@@ -1,23 +1,39 @@
+export type FormMonitorTrend = {
+  direction: "up" | "down" | "flat";
+  percent: number | null;
+};
+
+export type FormMonitorTotals = {
+  submitted: number;
+  missing: number;
+  spam: number;
+  trackedRate: number | null;
+};
+
 export type FormMonitorSiteSummary = {
   id: string;
   url: string;
   label: string | null;
   lastFormAt: string | null;
   lastTrackingAt: string | null;
-  missingLast7Days: number;
-  status: "pass" | "fail";
+  submitted: number;
+  missing: number;
+  trackedRate: number | null;
+  trend: FormMonitorTrend;
 };
 
 export type FormMonitorDayBucket = {
   date: string;
   submissions: number;
   missing: number;
+  spam: number;
 };
 
 export type FormMonitorLeadRecord = {
   id: string;
   referenceId: string;
   formTitle: string | null;
+  isSpam: boolean;
   formId: number | null;
   entryId: number | null;
   formReceivedAt: string | null;

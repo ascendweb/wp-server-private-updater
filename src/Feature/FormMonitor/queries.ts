@@ -1,17 +1,20 @@
 import { prisma } from "@/lib/db";
 import { activeSiteWhere } from "@/lib/site-status";
 import { sortBySiteUrl } from "@/lib/site-url";
-import type { FormMonitorDayBucket, FormMonitorLeadRecord, FormMonitorSiteSummary } from "./types";
+import type {
+  FormMonitorDayBucket,
+  FormMonitorLeadRecord,
+  FormMonitorSiteSummary,
+  FormMonitorTotals,
+  FormMonitorTrend,
+} from "./types";
 import { FORM_MONITOR_EVENT_LIMIT } from "./protocol";
+import { resolveFormMonitorRange, utcDayKey, type ResolvedFormMonitorRange } from "./range";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-function utcDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 export type FormMonitorRange = {
@@ -33,7 +36,7 @@ export type FormMonitorEventRecord = FormMonitorLeadRecord & {
   siteId: string | null;
   siteUrl: string | null;
   siteLabel: string | null;
-  status: "tracked" | "missing" | "fixed";
+  status: "tracked" | "missing" | "fixed" | "spam";
 };
 
 function parseIsoDate(value: string, field: string): Date {
@@ -53,25 +56,15 @@ export function formMonitorRange(since?: string, until?: string): FormMonitorRan
   return { since: parsedSince, until: parsedUntil };
 }
 
-function leadStatus(record: { trackingReceivedAt: Date | string | null; ignoredAt: Date | string | null }): "tracked" | "missing" | "fixed" {
+function leadStatus(record: {
+  trackingReceivedAt: Date | string | null;
+  ignoredAt: Date | string | null;
+  isSpam: boolean;
+}): "tracked" | "missing" | "fixed" | "spam" {
+  if (record.isSpam) return "spam";
   if (record.trackingReceivedAt) return "tracked";
   if (record.ignoredAt) return "fixed";
   return "missing";
-}
-
-export async function listSiteSummaries(): Promise<FormMonitorSiteSummary[]> {
-  const until = new Date();
-  const since = new Date(until.getTime() - WEEK_MS);
-  const rows = await listSiteSummariesInRange({ since, until });
-  return rows.map((row) => ({
-    id: row.id,
-    url: row.url,
-    label: row.label,
-    lastFormAt: row.lastFormAt,
-    lastTrackingAt: row.lastTrackingAt,
-    missingLast7Days: row.missingCount,
-    status: row.status,
-  }));
 }
 
 export async function listSiteSummariesInRange(input: {
@@ -108,6 +101,7 @@ export async function listSiteSummariesInRange(input: {
         siteId: { in: siteIds },
         formReceivedAt: inWindow,
         trackingReceivedAt: null,
+        isSpam: false,
       },
       _count: { _all: true },
     }),
@@ -118,6 +112,7 @@ export async function listSiteSummariesInRange(input: {
         formReceivedAt: inWindow,
         trackingReceivedAt: null,
         ignoredAt: null,
+        isSpam: false,
       },
       _count: { _all: true },
     }),
@@ -158,7 +153,7 @@ export async function listRecentFormEvents(input: {
       formReceivedAt: { gte: input.since, lte: input.until },
       ...(input.siteIds?.length ? { siteId: { in: input.siteIds } } : {}),
       ...(input.missingOnly
-        ? { trackingReceivedAt: null, ignoredAt: null }
+        ? { trackingReceivedAt: null, ignoredAt: null, isSpam: false }
         : {}),
     },
     orderBy: { formReceivedAt: "desc" },
@@ -167,6 +162,7 @@ export async function listRecentFormEvents(input: {
       id: true,
       referenceId: true,
       formTitle: true,
+      isSpam: true,
       formId: true,
       entryId: true,
       formReceivedAt: true,
@@ -186,26 +182,37 @@ export async function listRecentFormEvents(input: {
   }));
 }
 
-function emptyWeekBuckets(start: Date): FormMonitorDayBucket[] {
+const DAY_MS = 24 * 60 * 60 * 1000;
+const BASELINE_DAYS = 30;
+const TREND_BAND = 0.15;
+
+type LeadSlice = {
+  siteId: string | null;
+  formReceivedAt: Date | null;
+  trackingReceivedAt: Date | null;
+  isSpam: boolean;
+};
+
+function dayBuckets(since: Date, until: Date): FormMonitorDayBucket[] {
   const buckets: FormMonitorDayBucket[] = [];
-  for (let i = 0; i < 7; i += 1) {
-    const day = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
-    buckets.push({ date: utcDateKey(day), submissions: 0, missing: 0 });
+  for (let time = startOfUtcDay(since).getTime(); time <= startOfUtcDay(until).getTime(); time += DAY_MS) {
+    buckets.push({ date: utcDayKey(new Date(time)), submissions: 0, missing: 0, spam: 0 });
   }
   return buckets;
 }
 
-function fillDayBuckets(
-  leads: { formReceivedAt: Date | null; trackingReceivedAt: Date | null }[],
-  start: Date
-): FormMonitorDayBucket[] {
-  const buckets = emptyWeekBuckets(start);
+function fillDayBuckets(leads: LeadSlice[], since: Date, until: Date): FormMonitorDayBucket[] {
+  const buckets = dayBuckets(since, until);
   const byDate = new Map(buckets.map((bucket) => [bucket.date, bucket]));
 
   for (const lead of leads) {
     if (!lead.formReceivedAt) continue;
-    const bucket = byDate.get(utcDateKey(lead.formReceivedAt));
+    const bucket = byDate.get(utcDayKey(lead.formReceivedAt));
     if (!bucket) continue;
+    if (lead.isSpam) {
+      bucket.spam += 1;
+      continue;
+    }
     bucket.submissions += 1;
     if (!lead.trackingReceivedAt) bucket.missing += 1;
   }
@@ -213,55 +220,175 @@ function fillDayBuckets(
   return buckets;
 }
 
-function chartWindowStart(): Date {
-  return startOfUtcDay(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
-}
-
-export async function listOverview(): Promise<{
-  sites: FormMonitorSiteSummary[];
-  days: FormMonitorDayBucket[];
-}> {
-  const sites = await listSiteSummaries();
-  const start = chartWindowStart();
-  const siteIds = sites.map((site) => site.id);
-  const leads =
-    siteIds.length === 0
-      ? []
-      : await prisma.formMonitorLead.findMany({
-          where: {
-            siteId: { in: siteIds },
-            formReceivedAt: { gte: start },
-          },
-          select: {
-            formReceivedAt: true,
-            trackingReceivedAt: true,
-          },
-        });
-
+function totalsFromBuckets(buckets: FormMonitorDayBucket[]): FormMonitorTotals {
+  const submitted = buckets.reduce((sum, bucket) => sum + bucket.submissions, 0);
+  const missing = buckets.reduce((sum, bucket) => sum + bucket.missing, 0);
+  const spam = buckets.reduce((sum, bucket) => sum + bucket.spam, 0);
   return {
-    sites,
-    days: fillDayBuckets(leads, start),
+    submitted,
+    missing,
+    spam,
+    trackedRate: submitted === 0 ? null : (submitted - missing) / submitted,
   };
 }
 
-export async function getSiteChart(siteId: string) {
+function completeDayKeys(range: ResolvedFormMonitorRange, now: Date): string[] {
+  const today = startOfUtcDay(now).getTime();
+  const since = startOfUtcDay(range.since).getTime();
+  const until = startOfUtcDay(range.until).getTime();
+  const lastComplete = Math.min(until, today - DAY_MS);
+  if (lastComplete < since) return [];
+  const keys: string[] = [];
+  for (let time = since; time <= lastComplete; time += DAY_MS) {
+    keys.push(utcDayKey(new Date(time)));
+  }
+  return keys;
+}
+
+function baselineDayKeys(anchorKey: string): string[] {
+  const anchor = startOfUtcDay(new Date(`${anchorKey}T00:00:00Z`)).getTime();
+  const keys: string[] = [];
+  for (let offset = BASELINE_DAYS - 1; offset >= 0; offset -= 1) {
+    keys.push(utcDayKey(new Date(anchor - offset * DAY_MS)));
+  }
+  return keys;
+}
+
+function trendForCounts(
+  counts: Map<string, number>,
+  periodKeys: string[],
+  firstAt: Date | null
+): FormMonitorTrend {
+  const flat: FormMonitorTrend = { direction: "flat", percent: null };
+  if (periodKeys.length === 0) return flat;
+  const anchorKey = periodKeys[periodKeys.length - 1];
+  if (firstAt) {
+    const ageDays = (startOfUtcDay(new Date(`${anchorKey}T00:00:00Z`)).getTime() - startOfUtcDay(firstAt).getTime()) / DAY_MS;
+    if (ageDays < 6) return flat;
+  } else {
+    return flat;
+  }
+
+  const baselineKeys = baselineDayKeys(anchorKey);
+  const periodTotal = periodKeys.reduce((sum, key) => sum + (counts.get(key) ?? 0), 0);
+  const baselineTotal = baselineKeys.reduce((sum, key) => sum + (counts.get(key) ?? 0), 0);
+  const periodRate = periodTotal / periodKeys.length;
+  const baselineRate = baselineTotal / baselineKeys.length;
+  if (baselineRate === 0) {
+    return periodRate === 0 ? flat : { direction: "up", percent: null };
+  }
+  const change = (periodRate - baselineRate) / baselineRate;
+  if (Math.abs(change) <= TREND_BAND) return flat;
+  return {
+    direction: change > 0 ? "up" : "down",
+    percent: Math.round(Math.abs(change) * 100),
+  };
+}
+
+function siteDayCounts(leads: LeadSlice[], siteId: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const lead of leads) {
+    if (lead.siteId !== siteId || lead.isSpam || !lead.formReceivedAt) continue;
+    const key = utcDayKey(lead.formReceivedAt);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function listOverview(rangeInput?: {
+  range?: string | null;
+  since?: string | null;
+  until?: string | null;
+  now?: Date;
+}): Promise<{
+  range: { id: string; since: string; until: string };
+  totals: FormMonitorTotals;
+  sites: FormMonitorSiteSummary[];
+  days: FormMonitorDayBucket[];
+}> {
+  const now = rangeInput?.now ?? new Date();
+  const range = resolveFormMonitorRange({ ...rangeInput, now });
+  const sites = await prisma.site.findMany({
+    where: activeSiteWhere,
+    select: { id: true, url: true, label: true },
+  });
+  const siteIds = sites.map((site) => site.id);
+  const periodKeys = completeDayKeys(range, now);
+  const historyStart = periodKeys.length
+    ? new Date(`${baselineDayKeys(periodKeys[periodKeys.length - 1])[0]}T00:00:00Z`)
+    : range.since;
+  const fetchSince = historyStart.getTime() < range.since.getTime() ? historyStart : range.since;
+
+  const [lastForm, lastTracking, firstForm, leads] = siteIds.length
+    ? await Promise.all([
+        prisma.formMonitorLead.groupBy({
+          by: ["siteId"],
+          where: { siteId: { in: siteIds }, formReceivedAt: { not: null } },
+          _max: { formReceivedAt: true },
+        }),
+        prisma.formMonitorLead.groupBy({
+          by: ["siteId"],
+          where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null } },
+          _max: { trackingReceivedAt: true },
+        }),
+        prisma.formMonitorLead.groupBy({
+          by: ["siteId"],
+          where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, isSpam: false },
+          _min: { formReceivedAt: true },
+        }),
+        prisma.formMonitorLead.findMany({
+          where: { siteId: { in: siteIds }, formReceivedAt: { gte: fetchSince, lte: range.until } },
+          select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true },
+        }),
+      ])
+    : [[], [], [], []];
+
+  const lastFormBySite = new Map(lastForm.map((row) => [row.siteId, row._max.formReceivedAt]));
+  const lastTrackingBySite = new Map(lastTracking.map((row) => [row.siteId, row._max.trackingReceivedAt]));
+  const firstFormBySite = new Map(firstForm.map((row) => [row.siteId, row._min.formReceivedAt]));
+  const days = fillDayBuckets(leads, range.since, range.until);
+
+  const rows = sortBySiteUrl(sites, (site) => site.url).map((site) => {
+    const siteLeads = leads.filter((lead) => lead.siteId === site.id);
+    const siteDays = fillDayBuckets(siteLeads, range.since, range.until);
+    const totals = totalsFromBuckets(siteDays);
+    return {
+      id: site.id,
+      url: site.url,
+      label: site.label,
+      lastFormAt: lastFormBySite.get(site.id)?.toISOString() ?? null,
+      lastTrackingAt: lastTrackingBySite.get(site.id)?.toISOString() ?? null,
+      submitted: totals.submitted,
+      missing: totals.missing,
+      trackedRate: totals.trackedRate,
+      trend: trendForCounts(siteDayCounts(siteLeads, site.id), periodKeys, firstFormBySite.get(site.id) ?? null),
+    };
+  });
+
+  return {
+    range: { id: range.id, since: range.since.toISOString(), until: range.until.toISOString() },
+    totals: totalsFromBuckets(days),
+    sites: rows,
+    days,
+  };
+}
+
+export async function getSiteChart(
+  siteId: string,
+  rangeInput?: { range?: string | null; since?: string | null; until?: string | null; now?: Date }
+) {
   const site = await prisma.site.findUnique({
     where: { id: siteId },
     select: { id: true, url: true, label: true, status: true },
   });
   if (!site) return null;
 
-  const start = chartWindowStart();
+  const now = rangeInput?.now ?? new Date();
+  const range = resolveFormMonitorRange({ ...rangeInput, now });
   const [leads, recent] = await Promise.all([
     prisma.formMonitorLead.findMany({
-      where: {
-        siteId,
-        formReceivedAt: { gte: start },
-      },
-      select: {
-        formReceivedAt: true,
-        trackingReceivedAt: true,
-      },
+      where: { siteId, formReceivedAt: { gte: range.since, lte: range.until } },
+      select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true },
     }),
     prisma.formMonitorLead.findMany({
       where: { siteId },
@@ -271,6 +398,7 @@ export async function getSiteChart(siteId: string) {
         id: true,
         referenceId: true,
         formTitle: true,
+        isSpam: true,
         formId: true,
         entryId: true,
         formReceivedAt: true,
@@ -280,13 +408,12 @@ export async function getSiteChart(siteId: string) {
     }),
   ]);
 
+  const days = fillDayBuckets(leads, range.since, range.until);
   return {
-    site: {
-      id: site.id,
-      url: site.url,
-      label: site.label,
-    },
-    days: fillDayBuckets(leads, start),
+    site: { id: site.id, url: site.url, label: site.label },
+    range: { id: range.id, since: range.since.toISOString(), until: range.until.toISOString() },
+    totals: totalsFromBuckets(days),
+    days,
     records: recent.map(serializeLeadRecord),
   };
 }
@@ -298,6 +425,7 @@ export async function markSiteMissingIgnored(siteId: string): Promise<number> {
       formReceivedAt: { not: null },
       trackingReceivedAt: null,
       ignoredAt: null,
+      isSpam: false,
     },
     data: { ignoredAt: new Date() },
   });
@@ -308,6 +436,7 @@ function serializeLeadRecord(lead: {
   id: string;
   referenceId: string;
   formTitle: string | null;
+  isSpam: boolean;
   formId: number | null;
   entryId: number | null;
   formReceivedAt: Date | null;
@@ -318,6 +447,7 @@ function serializeLeadRecord(lead: {
     id: lead.id,
     referenceId: lead.referenceId,
     formTitle: lead.formTitle,
+    isSpam: lead.isSpam,
     formId: lead.formId,
     entryId: lead.entryId,
     formReceivedAt: lead.formReceivedAt?.toISOString() ?? null,

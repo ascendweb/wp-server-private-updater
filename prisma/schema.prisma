@@ -246,6 +246,7 @@ model FormMonitorLead {
   formId             Int?
   entryId            Int?
   formTitle          String?
+  isSpam             Boolean   @default(false)
   formReceivedAt     DateTime?
   trackingReceivedAt DateTime?
   trackingId         String?
