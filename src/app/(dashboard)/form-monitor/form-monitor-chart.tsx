@@ -24,9 +24,9 @@ export function FormMonitorPeriodStats({ totals, includeSpam }: { totals: FormMo
   const items = [{ label: "Tracking", value: percent === null ? "N/A" : `${percent}%`, className: rateClass }, { label: "Submitted", value: String(totals.submitted), className: "text-foreground" }, { label: "Missing", value: String(totals.missing), className: "text-foreground" }, ...(includeSpam ? [{ label: "Spam", value: String(totals.spam), className: "text-foreground" }] : [])];
 
   return (
-    <div className="mb-4 flex flex-wrap gap-6">
+    <div className="mb-4 flex flex-wrap gap-2">
       {items.map((item) => (
-        <div className="grow py-1 px-3 rounded-lg border-border" key={item.label}>
+        <div className="grow py-1 px-3 rounded-lg border border-border" key={item.label}>
           <div className="text-xs text-muted-foreground">{item.label}</div>
           <div className={`text-lg font-semibold ${item.className}`}>{item.value}</div>
         </div>
@@ -49,7 +49,7 @@ export function FormMonitorChart({ days, includeSpam }: { days: FormMonitorDayBu
   }
 
   return (
-    <div className="h-80 w-full">
+    <div className="h-80 w-full [&_.recharts-surface]:focus:outline-none [&_.recharts-surface]:focus-visible:outline-none [&_.recharts-wrapper]:focus:outline-none [&_.recharts-wrapper]:focus-visible:outline-none">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />

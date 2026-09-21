@@ -87,7 +87,7 @@ export async function listSiteSummariesInRange(input: {
   const [lastForm, lastTracking, missing, openMissing] = await Promise.all([
     prisma.formMonitorLead.groupBy({
       by: ["siteId"],
-      where: { siteId: { in: siteIds }, formReceivedAt: { not: null } },
+      where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, isSpam: false },
       _max: { formReceivedAt: true },
     }),
     prisma.formMonitorLead.groupBy({
@@ -323,7 +323,7 @@ export async function listOverview(rangeInput?: {
     ? await Promise.all([
         prisma.formMonitorLead.groupBy({
           by: ["siteId"],
-          where: { siteId: { in: siteIds }, formReceivedAt: { not: null } },
+          where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, isSpam: false },
           _max: { formReceivedAt: true },
         }),
         prisma.formMonitorLead.groupBy({

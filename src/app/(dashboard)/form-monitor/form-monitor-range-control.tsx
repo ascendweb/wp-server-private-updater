@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -8,7 +8,7 @@ import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   FORM_MONITOR_RANGE_IDS,
   FORM_MONITOR_RANGE_LABELS,
@@ -28,6 +28,11 @@ function localDateToDayKey(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${day}`;
 }
+
+const SPAM_ITEMS = [
+  { value: "exclude", label: "Exclude Spam" },
+  { value: "include", label: "Include Spam" },
+] as const;
 
 function formatRangeLabel(since: Date, until: Date) {
   const from = dayKeyToLocalDate(utcDayKey(since));
@@ -58,13 +63,13 @@ export function FormMonitorRangeControl({
   };
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(committed);
+  const draftRef = useRef(draft);
+  const skipApplyRef = useRef(false);
 
-  useEffect(() => {
-    setDraft({
-      from: dayKeyToLocalDate(sinceKey),
-      to: dayKeyToLocalDate(untilKey),
-    });
-  }, [sinceKey, untilKey]);
+  function setRangeDraft(next: DateRange | undefined) {
+    draftRef.current = next;
+    setDraft(next);
+  }
 
   function visit(next: { id: FormMonitorRangeId; sinceDay?: string; untilDay?: string; includeSpam?: boolean }) {
     const rangeValue = resolveFormMonitorRange({
@@ -75,6 +80,15 @@ export function FormMonitorRangeControl({
     router.push(`${pathname}${formMonitorRangeQuery(rangeValue, next.includeSpam ?? includeSpam)}`);
   }
 
+  function applyDraft() {
+    const current = draftRef.current;
+    if (!current?.from || !current.to) return;
+    const sinceDay = localDateToDayKey(current.from);
+    const untilDay = localDateToDayKey(current.to);
+    if (sinceDay === sinceKey && untilDay === untilKey) return;
+    visit({ id: "custom", sinceDay, untilDay });
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-3">
       <Popover
@@ -82,8 +96,14 @@ export function FormMonitorRangeControl({
         onOpenChange={(next) => {
           setOpen(next);
           if (next) {
-            setDraft({ from: dayKeyToLocalDate(sinceKey), to: dayKeyToLocalDate(untilKey) });
+            setRangeDraft({ from: dayKeyToLocalDate(sinceKey), to: dayKeyToLocalDate(untilKey) });
+            return;
           }
+          if (skipApplyRef.current) {
+            skipApplyRef.current = false;
+            return;
+          }
+          applyDraft();
         }}
       >
         <PopoverTrigger
@@ -104,6 +124,7 @@ export function FormMonitorRangeControl({
                   size="sm"
                   className="justify-start"
                   onClick={() => {
+                    skipApplyRef.current = true;
                     visit({ id });
                     setOpen(false);
                   }}
@@ -118,26 +139,31 @@ export function FormMonitorRangeControl({
               defaultMonth={draft?.from}
               numberOfMonths={2}
               onSelect={(next) => {
-                setDraft(next);
-                if (!next?.from || !next.to) return;
-                visit({
-                  id: "custom",
-                  sinceDay: localDateToDayKey(next.from),
-                  untilDay: localDateToDayKey(next.to),
-                });
-                setOpen(false);
+                setRangeDraft(next);
               }}
             />
           </div>
         </PopoverContent>
       </Popover>
-      <label className="flex items-center gap-2 text-sm text-muted-foreground">
-        Include spam
-        <Switch
-          checked={includeSpam}
-          onCheckedChange={(checked) => visit({ id: resolved.id, includeSpam: checked })}
-        />
-      </label>
+      <Select
+        items={SPAM_ITEMS}
+        value={includeSpam ? "include" : "exclude"}
+        onValueChange={(value) => {
+          if (value !== "include" && value !== "exclude") return;
+          visit({ id: resolved.id, includeSpam: value === "include" });
+        }}
+      >
+        <SelectTrigger className="h-9 min-w-36 border-transparent bg-muted font-normal hover:bg-muted/80 data-[size=default]:h-9 dark:border-transparent dark:bg-muted/50 dark:hover:bg-muted/80">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {SPAM_ITEMS.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
