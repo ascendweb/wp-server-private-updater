@@ -106,13 +106,18 @@ export function resolveFormMonitorRange(input?: {
   return { id: "last-7", since: addUtcDays(today, -6), until: endOfUtcDay(today) };
 }
 
-export function formMonitorRangeQuery(range: ResolvedFormMonitorRange): string {
+export function formMonitorIncludeSpam(value: string | null | undefined): boolean {
+  return value === "1" || value === "true";
+}
+
+export function formMonitorRangeQuery(range: ResolvedFormMonitorRange, includeSpam = false): string {
   const params = new URLSearchParams();
   if (range.id !== "last-7") params.set("range", range.id);
   if (range.id === "custom") {
     params.set("since", utcDayKey(range.since));
     params.set("until", utcDayKey(range.until));
   }
+  if (includeSpam) params.set("spam", "1");
   const query = params.toString();
   return query ? `?${query}` : "";
 }

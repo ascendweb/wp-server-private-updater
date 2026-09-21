@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { FormMonitorDayBucket, FormMonitorTotals } from "@/Feature/FormMonitor/types";
+import { FormMonitorRangeControl } from "./form-monitor-range-control";
 
 function formatDayLabel(date: string) {
   const parsed = new Date(`${date}T00:00:00Z`);
@@ -16,7 +17,7 @@ function seriesOrder(dataKey: unknown) {
   return 2;
 }
 
-export function FormMonitorPeriodStats({ totals }: { totals: FormMonitorTotals }) {
+export function FormMonitorPeriodStats({ totals, includeSpam }: { totals: FormMonitorTotals; includeSpam: boolean }) {
   const percent = totals.trackedRate === null ? null : Math.round(totals.trackedRate * 100);
   const rateClass =
     percent === null
@@ -31,7 +32,7 @@ export function FormMonitorPeriodStats({ totals }: { totals: FormMonitorTotals }
     { label: "Tracking", value: percent === null ? "N/A" : `${percent}%`, className: rateClass },
     { label: "Submitted", value: String(totals.submitted), className: "text-foreground" },
     { label: "Missing", value: String(totals.missing), className: "text-foreground" },
-    { label: "Spam", value: String(totals.spam), className: "text-foreground" },
+    ...(includeSpam ? [{ label: "Spam", value: String(totals.spam), className: "text-foreground" }] : []),
   ];
 
   return (
@@ -46,7 +47,7 @@ export function FormMonitorPeriodStats({ totals }: { totals: FormMonitorTotals }
   );
 }
 
-export function FormMonitorChart({ days }: { days: FormMonitorDayBucket[] }) {
+export function FormMonitorChart({ days, includeSpam }: { days: FormMonitorDayBucket[]; includeSpam: boolean }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -70,16 +71,18 @@ export function FormMonitorChart({ days }: { days: FormMonitorDayBucket[] }) {
           <Legend itemSorter={(item) => seriesOrder(item.dataKey)} />
           <Line type="monotone" dataKey="submissions" name="Submissions" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="missing" name="Missing Tracking" stroke="var(--chart-2)" strokeWidth={2} dot={false} />
-          <Line
-            type="monotone"
-            dataKey="spam"
-            name="Spam"
-            stroke="var(--chart-3)"
-            strokeWidth={2}
-            strokeDasharray="4 4"
-            strokeOpacity={0.45}
-            dot={false}
-          />
+          {includeSpam ? (
+            <Line
+              type="monotone"
+              dataKey="spam"
+              name="Spam"
+              stroke="var(--chart-4)"
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              strokeOpacity={0.7}
+              dot={false}
+            />
+          ) : null}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -90,22 +93,35 @@ export function FormMonitorSiteChartCard({
   days,
   totals,
   title = "Form submissions",
-  description = "Submitted and missing exclude spam. Spam is shown on its own.",
+  range,
+  since,
+  until,
+  includeSpam,
 }: {
   days: FormMonitorDayBucket[];
   totals: FormMonitorTotals;
   title?: string;
-  description?: string;
+  range?: string | null;
+  since?: string | null;
+  until?: string | null;
+  includeSpam: boolean;
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription>
+          {includeSpam
+            ? "Submitted and missing exclude spam. Spam is shown separately."
+            : "Submitted and missing exclude spam."}
+        </CardDescription>
+        <CardAction>
+          <FormMonitorRangeControl range={range} since={since} until={until} includeSpam={includeSpam} />
+        </CardAction>
       </CardHeader>
       <CardContent>
-        <FormMonitorPeriodStats totals={totals} />
-        <FormMonitorChart days={days} />
+        <FormMonitorPeriodStats totals={totals} includeSpam={includeSpam} />
+        <FormMonitorChart days={days} includeSpam={includeSpam} />
       </CardContent>
     </Card>
   );

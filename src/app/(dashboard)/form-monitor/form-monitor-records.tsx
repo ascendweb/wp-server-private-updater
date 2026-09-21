@@ -32,23 +32,28 @@ function gfAdminUrl(siteUrl: string, formId: number, entryId?: number) {
 
 function ViewLink({ href, label }: { href: string; label: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-xs text-muted-foreground underline-offset-2 opacity-0 hover:underline group-hover:opacity-100"
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 opacity-0 hover:underline group-hover:opacity-100">
       {label}
     </a>
   );
 }
 
-export function FormMonitorRecords({ records, siteUrl }: { records: FormMonitorLeadRecord[]; siteUrl: string }) {
+export function FormMonitorRecords({
+  records,
+  siteUrl,
+  includeSpam = false,
+}: {
+  records: FormMonitorLeadRecord[];
+  siteUrl: string;
+  includeSpam?: boolean;
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Recent submissions</CardTitle>
-        <CardDescription>Last 15 form monitor records for this site.</CardDescription>
+        <CardDescription>
+          {includeSpam ? "Last 15 form monitor records for this site." : "Last 15 non-spam records for this site."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {records.length === 0 ? (
@@ -58,7 +63,7 @@ export function FormMonitorRecords({ records, siteUrl }: { records: FormMonitorL
             <TableHeader>
               <TableRow>
                 <TableHead>Form</TableHead>
-                <TableHead>GF ID</TableHead>
+                <TableHead>Form ID</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Tracking</TableHead>
                 <TableHead>Status</TableHead>
@@ -73,17 +78,13 @@ export function FormMonitorRecords({ records, siteUrl }: { records: FormMonitorL
                     <TableCell className="text-sm text-muted-foreground">
                       <span className="inline-flex items-center gap-2">
                         {record.formId ?? "—"}
-                        {record.formId ? (
-                          <ViewLink href={gfAdminUrl(siteUrl, record.formId)} label="(View)" />
-                        ) : null}
+                        {record.formId ? <ViewLink href={gfAdminUrl(siteUrl, record.formId)} label="View" /> : null}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       <span className="inline-flex items-center gap-2">
                         <RelativeTime value={record.formReceivedAt} />
-                        {record.formId && record.entryId ? (
-                          <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="(View)" />
-                        ) : null}
+                        {record.formId && record.entryId ? <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" /> : null}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

@@ -375,7 +375,13 @@ export async function listOverview(rangeInput?: {
 
 export async function getSiteChart(
   siteId: string,
-  rangeInput?: { range?: string | null; since?: string | null; until?: string | null; now?: Date }
+  rangeInput?: {
+    range?: string | null;
+    since?: string | null;
+    until?: string | null;
+    now?: Date;
+    includeSpam?: boolean;
+  }
 ) {
   const site = await prisma.site.findUnique({
     where: { id: siteId },
@@ -391,7 +397,7 @@ export async function getSiteChart(
       select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true },
     }),
     prisma.formMonitorLead.findMany({
-      where: { siteId },
+      where: { siteId, ...(rangeInput?.includeSpam ? {} : { isSpam: false }) },
       orderBy: { createdAt: "desc" },
       take: FORM_MONITOR_EVENT_LIMIT,
       select: {

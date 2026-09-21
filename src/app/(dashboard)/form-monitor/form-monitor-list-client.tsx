@@ -15,9 +15,8 @@ import { formatSiteHost } from "@/lib/site-url";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { RelativeTime } from "@/components/relative-time";
 import { cn } from "@/lib/utils";
-import { formMonitorRangeQuery, resolveFormMonitorRange, utcDayKey } from "@/Feature/FormMonitor/range";
+import { formMonitorIncludeSpam, formMonitorRangeQuery, resolveFormMonitorRange, utcDayKey } from "@/Feature/FormMonitor/range";
 import type { FormMonitorDayBucket, FormMonitorSiteSummary, FormMonitorTotals, FormMonitorTrend } from "@/Feature/FormMonitor/types";
-import { FormMonitorRangeControl } from "./form-monitor-range-control";
 import { FormMonitorSiteChartCard } from "./form-monitor-chart";
 
 const emptyTotals: FormMonitorTotals = { submitted: 0, missing: 0, spam: 0, trackedRate: null };
@@ -64,7 +63,8 @@ export function FormMonitorListClient() {
   const [days, setDays] = useState<FormMonitorDayBucket[]>([]);
   const [totals, setTotals] = useState<FormMonitorTotals>(emptyTotals);
   const [busy, setBusy] = useState<string | null>(null);
-  const rangeQuery = formMonitorRangeQuery(range);
+  const includeSpam = formMonitorIncludeSpam(search.get("spam"));
+  const rangeQuery = formMonitorRangeQuery(range, includeSpam);
   const sinceKey = utcDayKey(range.since);
   const untilKey = utcDayKey(range.until);
   const rangeKey = `${range.id}:${sinceKey}:${untilKey}`;
@@ -122,8 +122,15 @@ export function FormMonitorListClient() {
 
   return (
     <div className="space-y-6">
-      <FormMonitorRangeControl range={search.get("range")} since={search.get("since")} until={search.get("until")} />
-      <FormMonitorSiteChartCard days={days} totals={totals} title="Form submissions" />
+      <FormMonitorSiteChartCard
+        days={days}
+        totals={totals}
+        title="Form submissions"
+        range={search.get("range")}
+        since={search.get("since")}
+        until={search.get("until")}
+        includeSpam={includeSpam}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>
@@ -141,7 +148,7 @@ export function FormMonitorListClient() {
                   <TableHead>Site</TableHead>
                   <TableHead>Last Form</TableHead>
                   <TableHead>Last Tracking</TableHead>
-                  <TableHead>Total / Missing</TableHead>
+                  <TableHead># Tracked</TableHead>
                   <TableHead>Tracking</TableHead>
                   <TableHead>Volume</TableHead>
                   <TableHead className="w-12" />
@@ -162,10 +169,8 @@ export function FormMonitorListClient() {
                     <TableCell className="text-sm text-muted-foreground">
                       <RelativeTime value={site.lastTrackingAt} />
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="subtle">
-                        {site.submitted} / {site.missing}
-                      </Badge>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {site.submitted - site.missing} / {site.submitted}
                     </TableCell>
                     <TableCell>{rateBadge(site.trackedRate)}</TableCell>
                     <TableCell>{trendMark(site.trend)}</TableCell>
