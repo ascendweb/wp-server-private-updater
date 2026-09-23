@@ -40,6 +40,15 @@ function statusOf(record: FormMonitorLeadRecord): { label: string; variant: "suc
   return { label: "Missing", variant: "warn" };
 }
 
+function isPotentialSpam(record: FormMonitorLeadRecord) {
+  return Boolean(
+    !record.isTest &&
+      !record.deletedAt &&
+      record.isSpam &&
+      (record.trackingReceivedAt || record.trackingId),
+  );
+}
+
 function gfAdminUrl(siteUrl: string, formId: number, entryId?: number) {
   const base = siteUrl.replace(/\/$/, "");
   const params = new URLSearchParams({
@@ -299,9 +308,7 @@ export function FormMonitorRecords({
                             {status.label}
                           </Badge>
                           <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
-                            {record.isSpam && (record.trackingReceivedAt || record.trackingId) ? (
-                              <PotentialSpamFlag />
-                            ) : null}
+                            {isPotentialSpam(record) ? <PotentialSpamFlag /> : null}
                           </span>
                         </div>
                       </TableCell>

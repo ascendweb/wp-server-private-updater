@@ -96,6 +96,7 @@ function leadStatus(record: {
   isSpam: boolean;
   isTest?: boolean;
 }): "tracked" | "missing" | "fixed" | "spam" | "test" | "deleted" {
+  // Test > Tracked > Spam. Deleted stays below Test so Checkview deletes remain Test.
   if (record.isTest) return "test";
   if (record.deletedAt) return "deleted";
   if (hasTracking(record)) return "tracked";
@@ -129,7 +130,7 @@ export async function listSiteSummariesInRange(input: {
     }),
     prisma.formMonitorLead.groupBy({
       by: ["siteId"],
-      where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null } },
+      where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null }, ...countedLeadWhere() },
       _max: { trackingReceivedAt: true },
     }),
     prisma.formMonitorLead.groupBy({
@@ -441,7 +442,7 @@ export async function listOverview(rangeInput?: {
         }),
         prisma.formMonitorLead.groupBy({
           by: ["siteId"],
-          where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null } },
+          where: { siteId: { in: siteIds }, trackingReceivedAt: { not: null }, ...countedLeadWhere() },
           _max: { trackingReceivedAt: true },
         }),
         prisma.formMonitorLead.groupBy({
