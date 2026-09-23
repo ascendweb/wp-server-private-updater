@@ -21,6 +21,7 @@ export type FormMonitorSiteSummary = {
   submitted: number;
   missing: number;
   trackedRate: number | null;
+  spamDisagreeCount: number;
   trend: FormMonitorTrend;
 };
 

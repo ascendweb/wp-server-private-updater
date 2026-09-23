@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, MoreHorizontal, Settings } from "lucide-react";
+import { Check, Flag, MoreHorizontal, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +14,7 @@ import { usePageHeader } from "@/components/page-header";
 import { formatSiteHost } from "@/lib/site-url";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { RelativeTime } from "@/components/relative-time";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formMonitorRangeQuery, resolveFormMonitorRange, resolveFormMonitorSeries, utcDayKey } from "@/Feature/FormMonitor/range";
 import type { FormMonitorDayBucket, FormMonitorSiteSummary, FormMonitorTotals, FormMonitorTrend } from "@/Feature/FormMonitor/types";
@@ -38,6 +39,29 @@ function rateBadge(rate: number | null) {
   if (percent >= 100) return <Badge variant="success">{label}</Badge>;
   if (percent > 80) return <Badge variant="warn">{label}</Badge>;
   return <Badge variant="error">{label}</Badge>;
+}
+
+function spamDisagreeFlag(count: number) {
+  if (count <= 0) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            className="inline-flex size-3.5 shrink-0 items-center justify-center text-orange-500"
+            aria-label={`${count} potentially spam ${count === 1 ? "record" : "records"}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Flag className="size-3.5" />
+          </button>
+        }
+      />
+      <TooltipContent>
+        {count} {count === 1 ? "record" : "records"}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 function trendMark(trend: FormMonitorTrend) {
@@ -164,7 +188,12 @@ export function FormMonitorListClient() {
                     <TableCell className="text-sm text-muted-foreground">
                       {site.submitted - site.missing} / {site.submitted}
                     </TableCell>
-                    <TableCell>{rateBadge(site.trackedRate)}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1">
+                        {rateBadge(site.trackedRate)}
+                        {spamDisagreeFlag(site.spamDisagreeCount)}
+                      </span>
+                    </TableCell>
                     <TableCell>{trendMark(site.trend)}</TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <DropdownMenu>

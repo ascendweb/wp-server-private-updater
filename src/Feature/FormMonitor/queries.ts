@@ -290,6 +290,79 @@ function totalsFromBuckets(buckets: FormMonitorDayBucket[]): FormMonitorTotals {
   };
 }
 
+type LeadDailyStat = {
+  siteId: string;
+  day: string;
+  test: number;
+  deleted: number;
+  spam: number;
+  submissions: number;
+  missing: number;
+  spamDisagree: number;
+};
+
+function asCount(value: unknown): number {
+  if (typeof value === "bigint") return Number(value);
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function loadLeadDailyStats(siteIds: string[], since: Date, until: Date): Promise<LeadDailyStat[]> {
+  if (siteIds.length === 0) return [];
+  const rows = await prisma.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`
+    SELECT
+      "siteId",
+      to_char(("formReceivedAt" AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
+      COUNT(*) FILTER (WHERE "isTest")::int AS test,
+      COUNT(*) FILTER (WHERE NOT "isTest" AND "deletedAt" IS NOT NULL)::int AS deleted,
+      COUNT(*) FILTER (
+        WHERE NOT "isTest" AND "deletedAt" IS NULL AND "isSpam"
+          AND "trackingReceivedAt" IS NULL AND "trackingId" IS NULL
+      )::int AS spam,
+      COUNT(*) FILTER (
+        WHERE NOT "isTest" AND "deletedAt" IS NULL
+          AND (NOT "isSpam" OR "trackingReceivedAt" IS NOT NULL OR "trackingId" IS NOT NULL)
+      )::int AS submissions,
+      COUNT(*) FILTER (
+        WHERE NOT "isTest" AND "deletedAt" IS NULL
+          AND (NOT "isSpam" OR "trackingReceivedAt" IS NOT NULL OR "trackingId" IS NOT NULL)
+          AND "trackingReceivedAt" IS NULL AND "trackingId" IS NULL
+      )::int AS missing,
+      COUNT(*) FILTER (
+        WHERE NOT "isTest" AND "deletedAt" IS NULL AND "isSpam"
+          AND ("trackingReceivedAt" IS NOT NULL OR "trackingId" IS NOT NULL)
+      )::int AS "spamDisagree"
+    FROM "FormMonitorLead"
+    WHERE "siteId" IN (${Prisma.join(siteIds)})
+      AND "formReceivedAt" >= ${since}
+      AND "formReceivedAt" <= ${until}
+    GROUP BY 1, 2
+  `);
+  return rows.flatMap((row) => {
+    if (typeof row.siteId !== "string" || typeof row.day !== "string") return [];
+    return [
+      {
+        siteId: row.siteId,
+        day: row.day,
+        test: asCount(row.test),
+        deleted: asCount(row.deleted),
+        spam: asCount(row.spam),
+        submissions: asCount(row.submissions),
+        missing: asCount(row.missing),
+        spamDisagree: asCount(row.spamDisagree),
+      },
+    ];
+  });
+}
+
+function addDailyStat(bucket: FormMonitorDayBucket, row: LeadDailyStat) {
+  bucket.test += row.test;
+  bucket.deleted += row.deleted;
+  bucket.spam += row.spam;
+  bucket.submissions += row.submissions;
+  bucket.missing += row.missing;
+}
+
 function formLabel(formId: number | null | undefined, formTitle: string | null | undefined) {
   if (formTitle) return formTitle;
   if (formId) return `Form ${formId}`;
@@ -399,16 +472,6 @@ function trendForCounts(
   };
 }
 
-function siteDayCounts(leads: LeadSlice[], siteId: string): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const lead of leads) {
-    if (lead.siteId !== siteId || !lead.formReceivedAt || !isCountedLead(lead)) continue;
-    const key = utcDayKey(lead.formReceivedAt);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return counts;
-}
-
 export async function listOverview(rangeInput?: {
   range?: string | null;
   since?: string | null;
@@ -433,7 +496,7 @@ export async function listOverview(rangeInput?: {
     : range.since;
   const fetchSince = historyStart.getTime() < range.since.getTime() ? historyStart : range.since;
 
-  const [lastForm, lastTracking, firstForm, leads] = siteIds.length
+  const [lastForm, lastTracking, firstForm, daily] = siteIds.length
     ? await Promise.all([
         prisma.formMonitorLead.groupBy({
           by: ["siteId"],
@@ -450,32 +513,52 @@ export async function listOverview(rangeInput?: {
           where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, ...countedLeadWhere() },
           _min: { formReceivedAt: true },
         }),
-        prisma.formMonitorLead.findMany({
-          where: { siteId: { in: siteIds }, formReceivedAt: { gte: fetchSince, lte: range.until } },
-          select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, trackingId: true, isSpam: true, isTest: true, deletedAt: true },
-        }),
+        loadLeadDailyStats(siteIds, fetchSince, range.until),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [] as LeadDailyStat[]];
 
   const lastFormBySite = new Map(lastForm.map((row) => [row.siteId, row._max.formReceivedAt]));
   const lastTrackingBySite = new Map(lastTracking.map((row) => [row.siteId, row._max.trackingReceivedAt]));
   const firstFormBySite = new Map(firstForm.map((row) => [row.siteId, row._min.formReceivedAt]));
-  const days = fillDayBuckets(leads, range.since, range.until);
+  const sinceKey = utcDayKey(range.since);
+  const untilKey = utcDayKey(range.until);
+  const days = dayBuckets(range.since, range.until);
+  const daysByDate = new Map(days.map((bucket) => [bucket.date, bucket]));
+  const bySite = new Map<string, LeadDailyStat[]>();
+  for (const row of daily) {
+    const siteRows = bySite.get(row.siteId);
+    if (siteRows) siteRows.push(row);
+    else bySite.set(row.siteId, [row]);
+    if (row.day >= sinceKey && row.day <= untilKey) {
+      const bucket = daysByDate.get(row.day);
+      if (bucket) addDailyStat(bucket, row);
+    }
+  }
 
   const rows = sortBySiteUrl(sites, (site) => site.url).map((site) => {
-    const siteLeads = leads.filter((lead) => lead.siteId === site.id);
-    const siteDays = fillDayBuckets(siteLeads, range.since, range.until);
-    const totals = totalsFromBuckets(siteDays);
+    const siteRows = bySite.get(site.id) ?? [];
+    const counts = new Map<string, number>();
+    let submitted = 0;
+    let missing = 0;
+    let spamDisagree = 0;
+    for (const row of siteRows) {
+      counts.set(row.day, (counts.get(row.day) ?? 0) + row.submissions);
+      if (row.day < sinceKey || row.day > untilKey) continue;
+      submitted += row.submissions;
+      missing += row.missing;
+      spamDisagree += row.spamDisagree;
+    }
     return {
       id: site.id,
       url: site.url,
       label: site.label,
       lastFormAt: lastFormBySite.get(site.id)?.toISOString() ?? null,
       lastTrackingAt: lastTrackingBySite.get(site.id)?.toISOString() ?? null,
-      submitted: totals.submitted,
-      missing: totals.missing,
-      trackedRate: totals.trackedRate,
-      trend: trendForCounts(siteDayCounts(siteLeads, site.id), periodKeys, firstFormBySite.get(site.id) ?? null),
+      submitted,
+      missing,
+      trackedRate: submitted === 0 ? null : (submitted - missing) / submitted,
+      spamDisagreeCount: spamDisagree,
+      trend: trendForCounts(counts, periodKeys, firstFormBySite.get(site.id) ?? null),
     };
   });
 
