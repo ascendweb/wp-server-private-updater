@@ -139,7 +139,11 @@ function seriesIsDefault(series: FormMonitorSeriesId[]): boolean {
   return series.length === FORM_MONITOR_SERIES_DEFAULT.length && FORM_MONITOR_SERIES_DEFAULT.every((id) => series.includes(id));
 }
 
-export function formMonitorRangeQuery(range: ResolvedFormMonitorRange, series: FormMonitorSeriesId[] = FORM_MONITOR_SERIES_DEFAULT): string {
+export function formMonitorRangeQuery(
+  range: ResolvedFormMonitorRange,
+  series: FormMonitorSeriesId[] = FORM_MONITOR_SERIES_DEFAULT,
+  group?: string | null,
+): string {
   const params = new URLSearchParams();
   if (range.id !== "last-7") params.set("range", range.id);
   if (range.id === "custom") {
@@ -149,6 +153,11 @@ export function formMonitorRangeQuery(range: ResolvedFormMonitorRange, series: F
   if (!seriesIsDefault(series)) {
     params.set("series", series.length === 0 ? "none" : series.join(","));
   }
+  if (group === "form") params.set("group", "form");
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+export function resolveFormMonitorGroup(value?: string | null): "none" | "form" {
+  return value === "form" ? "form" : "none";
 }

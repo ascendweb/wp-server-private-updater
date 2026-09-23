@@ -4,7 +4,7 @@ import { SetPageHeader } from "@/components/set-page-header";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { getSiteChart } from "@/Feature/FormMonitor/queries";
-import { formMonitorRangeQuery, resolveFormMonitorRange, resolveFormMonitorSeries } from "@/Feature/FormMonitor/range";
+import { formMonitorRangeQuery, resolveFormMonitorGroup, resolveFormMonitorRange, resolveFormMonitorSeries } from "@/Feature/FormMonitor/range";
 import { FormMonitorSiteChartCard } from "../form-monitor-chart";
 import { FormMonitorRecords } from "../form-monitor-records";
 
@@ -23,12 +23,13 @@ export default async function FormMonitorSitePage({
   searchParams,
 }: {
   params: Promise<{ siteId: string }>;
-  searchParams: Promise<{ range?: string; since?: string; until?: string; series?: string }>;
+  searchParams: Promise<{ range?: string; since?: string; until?: string; series?: string; group?: string }>;
 }) {
   const { siteId } = await params;
   const query = await searchParams;
   const range = resolveFormMonitorRange(query);
   const series = resolveFormMonitorSeries(query.series);
+  const group = resolveFormMonitorGroup(query.group);
   const data = await getSiteChart(siteId, { ...query, series: query.series });
   if (!data) notFound();
 
@@ -56,7 +57,16 @@ export default async function FormMonitorSitePage({
         until={query.until}
         series={query.series}
       />
-      <FormMonitorRecords records={data.records} siteUrl={data.site.url} series={series} />
+      <FormMonitorRecords
+        siteId={data.site.id}
+        siteUrl={data.site.url}
+        series={series}
+        range={range}
+        group={group}
+        forms={data.forms}
+        records={data.records}
+        nextCursor={data.nextCursor}
+      />
     </div>
   );
 }

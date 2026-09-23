@@ -139,9 +139,9 @@ export function FormMonitorListClient() {
                 <TableRow>
                   <TableHead>Site</TableHead>
                   <TableHead>Last Submitted</TableHead>
-                  <TableHead>Last Tracking</TableHead>
+                  <TableHead>Last Tracked</TableHead>
                   <TableHead># Tracked</TableHead>
-                  <TableHead>Tracking</TableHead>
+                  <TableHead>Matched</TableHead>
                   <TableHead>Trend</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>

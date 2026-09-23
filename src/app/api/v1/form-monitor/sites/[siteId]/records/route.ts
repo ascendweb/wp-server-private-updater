@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getSiteChart } from "@/Feature/FormMonitor/queries";
+import { listSiteRecords } from "@/Feature/FormMonitor/queries";
+import { resolveFormMonitorSeries } from "@/Feature/FormMonitor/range";
 
 export async function GET(
   req: NextRequest,
@@ -12,15 +13,10 @@ export async function GET(
   }
 
   const { siteId } = await params;
-  const data = await getSiteChart(siteId, {
-    range: req.nextUrl.searchParams.get("range"),
-    since: req.nextUrl.searchParams.get("since"),
-    until: req.nextUrl.searchParams.get("until"),
-    series: req.nextUrl.searchParams.get("series"),
+  const data = await listSiteRecords({
+    siteId,
+    series: resolveFormMonitorSeries(req.nextUrl.searchParams.get("series")),
+    cursor: req.nextUrl.searchParams.get("cursor"),
   });
-  if (!data) {
-    return NextResponse.json({ error: "Site not found" }, { status: 404 });
-  }
-
   return NextResponse.json(data);
 }

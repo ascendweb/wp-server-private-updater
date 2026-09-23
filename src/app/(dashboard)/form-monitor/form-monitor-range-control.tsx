@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronDownIcon } from "lucide-react";
 import type { DateRange } from "react-day-picker";
@@ -68,8 +68,10 @@ export function FormMonitorRangeControl({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const resolved = resolveFormMonitorRange({ range, since, until });
   const selectedSeries = resolveFormMonitorSeries(series);
+  const group = searchParams.get("group");
   const sinceKey = utcDayKey(resolved.since);
   const untilKey = utcDayKey(resolved.until);
   const committed: DateRange = {
@@ -93,7 +95,7 @@ export function FormMonitorRangeControl({
       since: next.sinceDay ?? sinceKey,
       until: next.untilDay ?? untilKey,
     });
-    router.push(`${pathname}${formMonitorRangeQuery(rangeValue, next.series ?? selectedSeries)}`);
+    router.push(`${pathname}${formMonitorRangeQuery(rangeValue, next.series ?? selectedSeries, group)}`);
   }
 
   function applyDraft() {
