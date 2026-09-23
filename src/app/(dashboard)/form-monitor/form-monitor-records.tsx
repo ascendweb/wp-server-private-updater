@@ -1,4 +1,9 @@
+"use client";
+
+import { Copy } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RelativeTime } from "@/components/relative-time";
@@ -41,6 +46,24 @@ function ViewLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function CopyTrackingId({ trackingId }: { trackingId: string }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+      aria-label="Copy tracking ID"
+      onClick={() => {
+        navigator.clipboard.writeText(trackingId);
+        toast.success("Tracking ID copied");
+      }}
+    >
+      <Copy className="size-3.5" />
+    </Button>
+  );
+}
+
 export function FormMonitorRecords({
   records,
   siteUrl,
@@ -66,7 +89,7 @@ export function FormMonitorRecords({
                 <TableHead>Form ID</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Tracking</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[1px]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -84,14 +107,23 @@ export function FormMonitorRecords({
                     <TableCell className="text-sm text-muted-foreground">
                       <span className="inline-flex items-center gap-2">
                         <RelativeTime value={record.formReceivedAt} />
-                        {record.formId && record.entryId ? <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" /> : null}
+                        {record.deletedAt ? (
+                          <span>Deleted</span>
+                        ) : record.formId && record.entryId ? (
+                          <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" />
+                        ) : null}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      <RelativeTime value={record.trackingReceivedAt} />
+                      <span className="inline-flex items-center gap-2">
+                        <RelativeTime value={record.trackingReceivedAt} />
+                        {record.trackingId ? <CopyTrackingId trackingId={record.trackingId} /> : null}
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={status.variant}>{status.label}</Badge>
+                    <TableCell className="w-[1px]">
+                      <Badge variant={status.variant} className="w-full">
+                        {status.label}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 );

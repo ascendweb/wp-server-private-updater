@@ -43,6 +43,7 @@ export type FormMonitorLeadRecord = {
   entryId: number | null;
   formReceivedAt: string | null;
   trackingReceivedAt: string | null;
+  trackingId: string | null;
   ignoredAt: string | null;
   deletedAt: string | null;
 };

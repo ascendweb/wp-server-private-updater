@@ -183,6 +183,7 @@ export async function listRecentFormEvents(input: {
       entryId: true,
       formReceivedAt: true,
       trackingReceivedAt: true,
+      trackingId: true,
       ignoredAt: true,
       deletedAt: true,
       siteId: true,
@@ -442,6 +443,7 @@ export async function getSiteChart(
         entryId: true,
         formReceivedAt: true,
         trackingReceivedAt: true,
+        trackingId: true,
         ignoredAt: true,
         deletedAt: true,
       },
@@ -508,6 +510,7 @@ function serializeLeadRecord(lead: {
   entryId: number | null;
   formReceivedAt: Date | null;
   trackingReceivedAt: Date | null;
+  trackingId: string | null;
   ignoredAt: Date | null;
   deletedAt: Date | null;
 }): FormMonitorLeadRecord {
@@ -521,6 +524,7 @@ function serializeLeadRecord(lead: {
     entryId: lead.entryId,
     formReceivedAt: lead.formReceivedAt?.toISOString() ?? null,
     trackingReceivedAt: lead.trackingReceivedAt?.toISOString() ?? null,
+    trackingId: lead.trackingId,
     ignoredAt: lead.ignoredAt?.toISOString() ?? null,
     deletedAt: lead.deletedAt?.toISOString() ?? null,
   };
