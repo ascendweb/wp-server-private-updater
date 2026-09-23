@@ -47,13 +47,13 @@ function formatRangeLabel(range: { id: FormMonitorRangeId; since: Date; until: D
 }
 
 function seriesLabel(series: FormMonitorSeriesId[]) {
-  if (series.length === 0) return "None selected";
+  if (series.length === 0) return "No Series";
   if (series.length === 1) return FORM_MONITOR_SERIES_LABELS[series[0]];
-  if (series.length === FORM_MONITOR_SERIES_IDS.length) return "All series";
-  return `${series.length} selected`;
+  if (series.length === FORM_MONITOR_SERIES_IDS.length) return "All Series";
+  return `${series.length} Series`;
 }
 
-const triggerClass = "h-9 justify-start rounded-lg px-2.5 text-sm font-normal";
+const triggerClass = "h-9 rounded-lg px-2.5 text-sm font-normal";
 
 export function FormMonitorRangeControl({
   range,
@@ -127,7 +127,7 @@ export function FormMonitorRangeControl({
           applyDraft();
         }}
       >
-        <PopoverTrigger render={<Button variant="subtle" className={triggerClass} />}>
+        <PopoverTrigger render={<Button variant="subtle" className={`${triggerClass} justify-start`} />}>
           <CalendarIcon />
           {formatRangeLabel(resolved)}
         </PopoverTrigger>
@@ -163,7 +163,7 @@ export function FormMonitorRangeControl({
         </PopoverContent>
       </Popover>
       <DropdownMenu open={seriesOpen} onOpenChange={setSeriesOpen}>
-        <DropdownMenuTrigger render={<Button variant="subtle" className={`${triggerClass} min-w-36`} />}>
+        <DropdownMenuTrigger render={<Button variant="subtle" className={`${triggerClass} min-w-36 justify-between`} />}>
           {seriesLabel(selectedSeries)}
           <ChevronDownIcon className="size-4 text-muted-foreground" />
         </DropdownMenuTrigger>
