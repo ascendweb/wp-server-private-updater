@@ -38,17 +38,19 @@ function localDateToDayKey(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-function formatRangeLabel(since: Date, until: Date) {
-  const from = dayKeyToLocalDate(utcDayKey(since));
-  const to = dayKeyToLocalDate(utcDayKey(until));
-  if (utcDayKey(since) === utcDayKey(until)) return format(from, "LLL dd, y");
+function formatRangeLabel(range: { id: FormMonitorRangeId; since: Date; until: Date }) {
+  if (range.id !== "custom") return FORM_MONITOR_RANGE_LABELS[range.id];
+  const from = dayKeyToLocalDate(utcDayKey(range.since));
+  const to = dayKeyToLocalDate(utcDayKey(range.until));
+  if (utcDayKey(range.since) === utcDayKey(range.until)) return format(from, "LLL dd, y");
   return `${format(from, "LLL dd, y")} – ${format(to, "LLL dd, y")}`;
 }
 
 function seriesLabel(series: FormMonitorSeriesId[]) {
-  if (series.length === 0) return "No series";
-  if (series.length <= 2) return series.map((id) => FORM_MONITOR_SERIES_LABELS[id]).join(", ");
-  return `${series.length} series`;
+  if (series.length === 0) return "None selected";
+  if (series.length === 1) return FORM_MONITOR_SERIES_LABELS[series[0]];
+  if (series.length === FORM_MONITOR_SERIES_IDS.length) return "All series";
+  return `${series.length} selected`;
 }
 
 const triggerClass = "h-9 justify-start rounded-lg px-2.5 text-sm font-normal";
@@ -127,7 +129,7 @@ export function FormMonitorRangeControl({
       >
         <PopoverTrigger render={<Button variant="subtle" className={triggerClass} />}>
           <CalendarIcon />
-          {formatRangeLabel(resolved.since, resolved.until)}
+          {formatRangeLabel(resolved)}
         </PopoverTrigger>
         <PopoverContent align="end" className="w-auto p-0">
           <div className="flex flex-col sm:flex-row">
