@@ -50,7 +50,7 @@ function spamDisagreeFlag(count: number) {
           <button
             type="button"
             className="inline-flex size-3.5 shrink-0 items-center justify-center text-orange-500"
-            aria-label={`${count} potentially spam ${count === 1 ? "record" : "records"}`}
+            aria-label={`${count} Potential Spam`}
             onClick={(event) => event.stopPropagation()}
           >
             <Flag className="size-3.5" />
@@ -58,7 +58,7 @@ function spamDisagreeFlag(count: number) {
         }
       />
       <TooltipContent>
-        {count} {count === 1 ? "record" : "records"}
+        {count} Potential Spam
       </TooltipContent>
     </Tooltip>
   );
