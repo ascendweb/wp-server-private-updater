@@ -66,7 +66,11 @@ function PotentialSpamFlag() {
     <Tooltip>
       <TooltipTrigger
         render={
-          <button type="button" className="inline-flex text-orange-700" aria-label="Potentially Spam">
+          <button
+            type="button"
+            className="inline-flex size-3.5 shrink-0 items-center justify-center text-orange-500"
+            aria-label="Potentially Spam"
+          >
             <Flag className="size-3.5" />
           </button>
         }
@@ -258,7 +262,7 @@ export function FormMonitorRecords({
                   <TableHead>Form ID</TableHead>
                   <TableHead>Submitted</TableHead>
                   <TableHead>Tracking</TableHead>
-                  <TableHead className="w-[1px]">Status</TableHead>
+                  <TableHead className="w-px">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -290,12 +294,16 @@ export function FormMonitorRecords({
                         </span>
                       </TableCell>
                       <TableCell className="w-px">
-                        <span className="inline-flex items-center gap-1">
-                          <Badge variant={status.variant} className="w-full">
+                        <div className="flex w-full items-center gap-1">
+                          <Badge variant={status.variant} className="w-auto min-w-0 flex-1">
                             {status.label}
                           </Badge>
-                          {record.isSpam && (record.trackingReceivedAt || record.trackingId) ? <PotentialSpamFlag /> : null}
-                        </span>
+                          <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+                            {record.isSpam && (record.trackingReceivedAt || record.trackingId) ? (
+                              <PotentialSpamFlag />
+                            ) : null}
+                          </span>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
