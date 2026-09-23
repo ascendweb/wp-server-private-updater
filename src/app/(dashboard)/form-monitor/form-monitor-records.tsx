@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RelativeTime } from "@/components/relative-time";
 import type { FormMonitorLeadRecord } from "@/Feature/FormMonitor/types";
+import type { FormMonitorSeriesId } from "@/Feature/FormMonitor/range";
 
 function formLabel(record: FormMonitorLeadRecord) {
   if (record.formTitle) return record.formTitle;
@@ -10,7 +11,9 @@ function formLabel(record: FormMonitorLeadRecord) {
   return "Untitled form";
 }
 
-function statusOf(record: FormMonitorLeadRecord): { label: string; variant: "success" | "warn" | "subtle" } {
+function statusOf(record: FormMonitorLeadRecord): { label: string; variant: "success" | "warn" | "subtle" | "test" } {
+  if (record.isTest) return { label: "Test", variant: "test" };
+  if (record.deletedAt) return { label: "Deleted", variant: "subtle" };
   if (record.isSpam) return { label: "Spam", variant: "subtle" };
   if (record.trackingReceivedAt) return { label: "Tracked", variant: "success" };
   if (record.ignoredAt) return { label: "Fixed", variant: "subtle" };
@@ -41,19 +44,16 @@ function ViewLink({ href, label }: { href: string; label: string }) {
 export function FormMonitorRecords({
   records,
   siteUrl,
-  includeSpam = false,
 }: {
   records: FormMonitorLeadRecord[];
   siteUrl: string;
-  includeSpam?: boolean;
+  series: FormMonitorSeriesId[];
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Recent submissions</CardTitle>
-        <CardDescription>
-          {includeSpam ? "Last 15 form monitor records for this site." : "Last 15 non-spam records for this site."}
-        </CardDescription>
+        <CardDescription>Last 15 records matching the selected series.</CardDescription>
       </CardHeader>
       <CardContent>
         {records.length === 0 ? (

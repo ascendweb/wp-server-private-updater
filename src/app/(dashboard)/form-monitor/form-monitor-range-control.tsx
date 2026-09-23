@@ -3,19 +3,28 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronDownIcon } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   FORM_MONITOR_RANGE_IDS,
   FORM_MONITOR_RANGE_LABELS,
+  FORM_MONITOR_SERIES_IDS,
+  FORM_MONITOR_SERIES_LABELS,
   formMonitorRangeQuery,
   resolveFormMonitorRange,
+  resolveFormMonitorSeries,
   utcDayKey,
   type FormMonitorRangeId,
+  type FormMonitorSeriesId,
 } from "@/Feature/FormMonitor/range";
 
 function dayKeyToLocalDate(key: string): Date {
@@ -29,11 +38,6 @@ function localDateToDayKey(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-const SPAM_ITEMS = [
-  { value: "exclude", label: "Exclude Spam" },
-  { value: "include", label: "Include Spam" },
-] as const;
-
 function formatRangeLabel(since: Date, until: Date) {
   const from = dayKeyToLocalDate(utcDayKey(since));
   const to = dayKeyToLocalDate(utcDayKey(until));
@@ -41,20 +45,29 @@ function formatRangeLabel(since: Date, until: Date) {
   return `${format(from, "LLL dd, y")} – ${format(to, "LLL dd, y")}`;
 }
 
+function seriesLabel(series: FormMonitorSeriesId[]) {
+  if (series.length === 0) return "No series";
+  if (series.length <= 2) return series.map((id) => FORM_MONITOR_SERIES_LABELS[id]).join(", ");
+  return `${series.length} series`;
+}
+
+const triggerClass = "h-9 justify-start rounded-lg px-2.5 text-sm font-normal";
+
 export function FormMonitorRangeControl({
   range,
   since,
   until,
-  includeSpam,
+  series,
 }: {
   range?: string | null;
   since?: string | null;
   until?: string | null;
-  includeSpam: boolean;
+  series?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const resolved = resolveFormMonitorRange({ range, since, until });
+  const selectedSeries = resolveFormMonitorSeries(series);
   const sinceKey = utcDayKey(resolved.since);
   const untilKey = utcDayKey(resolved.until);
   const committed: DateRange = {
@@ -62,6 +75,7 @@ export function FormMonitorRangeControl({
     to: dayKeyToLocalDate(untilKey),
   };
   const [open, setOpen] = useState(false);
+  const [seriesOpen, setSeriesOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(committed);
   const draftRef = useRef(draft);
   const skipApplyRef = useRef(false);
@@ -71,13 +85,13 @@ export function FormMonitorRangeControl({
     setDraft(next);
   }
 
-  function visit(next: { id: FormMonitorRangeId; sinceDay?: string; untilDay?: string; includeSpam?: boolean }) {
+  function visit(next: { id: FormMonitorRangeId; sinceDay?: string; untilDay?: string; series?: FormMonitorSeriesId[] }) {
     const rangeValue = resolveFormMonitorRange({
       range: next.id,
       since: next.sinceDay ?? sinceKey,
       until: next.untilDay ?? untilKey,
     });
-    router.push(`${pathname}${formMonitorRangeQuery(rangeValue, next.includeSpam ?? includeSpam)}`);
+    router.push(`${pathname}${formMonitorRangeQuery(rangeValue, next.series ?? selectedSeries)}`);
   }
 
   function applyDraft() {
@@ -87,6 +101,11 @@ export function FormMonitorRangeControl({
     const untilDay = localDateToDayKey(current.to);
     if (sinceDay === sinceKey && untilDay === untilKey) return;
     visit({ id: "custom", sinceDay, untilDay });
+  }
+
+  function toggleSeries(id: FormMonitorSeriesId, checked: boolean) {
+    const next = checked ? [...selectedSeries, id] : selectedSeries.filter((item) => item !== id);
+    visit({ id: resolved.id, series: FORM_MONITOR_SERIES_IDS.filter((item) => next.includes(item)) });
   }
 
   return (
@@ -106,11 +125,7 @@ export function FormMonitorRangeControl({
           applyDraft();
         }}
       >
-        <PopoverTrigger
-          render={
-            <Button variant="subtle" className="h-9 justify-start rounded-lg px-2.5 text-sm font-normal" />
-          }
-        >
+        <PopoverTrigger render={<Button variant="subtle" className={triggerClass} />}>
           <CalendarIcon />
           {formatRangeLabel(resolved.since, resolved.until)}
         </PopoverTrigger>
@@ -145,30 +160,24 @@ export function FormMonitorRangeControl({
           </div>
         </PopoverContent>
       </Popover>
-      <Select
-        items={SPAM_ITEMS}
-        value={includeSpam ? "include" : "exclude"}
-        onValueChange={(value) => {
-          if (value !== "include" && value !== "exclude") return;
-          visit({ id: resolved.id, includeSpam: value === "include" });
-        }}
-      >
-        <SelectTrigger className="h-9 min-w-36 rounded-lg border-transparent bg-muted px-2.5 text-sm font-normal hover:bg-muted/80 data-[size=default]:h-9 dark:border-transparent dark:bg-muted/50 dark:hover:bg-muted/80">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent
-          side="bottom"
-          align="start"
-          alignItemWithTrigger={false}
-          collisionAvoidance={{ side: "shift", align: "shift", fallbackAxisSide: "none" }}
-        >
-          {SPAM_ITEMS.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
+      <DropdownMenu open={seriesOpen} onOpenChange={setSeriesOpen}>
+        <DropdownMenuTrigger render={<Button variant="subtle" className={`${triggerClass} min-w-36`} />}>
+          {seriesLabel(selectedSeries)}
+          <ChevronDownIcon className="size-4 text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="bottom" className="min-w-48">
+          {FORM_MONITOR_SERIES_IDS.map((id) => (
+            <DropdownMenuCheckboxItem
+              key={id}
+              checked={selectedSeries.includes(id)}
+              closeOnClick={false}
+              onCheckedChange={(checked) => toggleSeries(id, checked === true)}
+            >
+              {FORM_MONITOR_SERIES_LABELS[id]}
+            </DropdownMenuCheckboxItem>
           ))}
-        </SelectContent>
-      </Select>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

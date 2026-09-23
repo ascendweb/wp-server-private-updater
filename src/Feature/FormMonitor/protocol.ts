@@ -1,6 +1,7 @@
 export const REFERENCE_FIELD = "tacowp_reference_id";
 export const CHECK_TRACKING_QUEUE = "form-monitor-check-tracking";
 export const DEFAULT_CHECK_DELAY_MINUTES = 60;
+export const DEFAULT_TEST_QUERY_PARAMS = ["checkview_test_id"];
 export const FORM_MONITOR_EVENT_LIMIT = 15;
 
 export function parseOptionalInt(value: unknown): number | null {
@@ -70,4 +71,33 @@ export function isTrackingUpdate(payload: unknown): boolean {
   const body = asRecord(payload);
   const trigger = stringValue(body?.trigger);
   return trigger?.toLowerCase() === "update";
+}
+
+export type FormMonitorFieldValue = {
+  id: string;
+  label: string;
+  type: string;
+  value: string | null;
+};
+
+export function parseFormMonitorFields(value: unknown): FormMonitorFieldValue[] | null {
+  if (!Array.isArray(value)) return null;
+  const fields: FormMonitorFieldValue[] = [];
+  for (const item of value) {
+    const record = asRecord(item);
+    if (!record) continue;
+    const id = stringValue(record.id);
+    if (!id) continue;
+    fields.push({
+      id,
+      label: stringValue(record.label) ?? "",
+      type: stringValue(record.type) ?? "",
+      value: stringValue(record.value),
+    });
+  }
+  return fields;
+}
+
+export function parseSourceUrl(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

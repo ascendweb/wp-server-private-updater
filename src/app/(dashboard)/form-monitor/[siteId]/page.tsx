@@ -4,7 +4,7 @@ import { SetPageHeader } from "@/components/set-page-header";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { formatSiteHost, formatSiteTitle } from "@/lib/site-url";
 import { getSiteChart } from "@/Feature/FormMonitor/queries";
-import { formMonitorIncludeSpam, formMonitorRangeQuery, resolveFormMonitorRange } from "@/Feature/FormMonitor/range";
+import { formMonitorRangeQuery, resolveFormMonitorRange, resolveFormMonitorSeries } from "@/Feature/FormMonitor/range";
 import { FormMonitorSiteChartCard } from "../form-monitor-chart";
 import { FormMonitorRecords } from "../form-monitor-records";
 
@@ -23,13 +23,13 @@ export default async function FormMonitorSitePage({
   searchParams,
 }: {
   params: Promise<{ siteId: string }>;
-  searchParams: Promise<{ range?: string; since?: string; until?: string; spam?: string }>;
+  searchParams: Promise<{ range?: string; since?: string; until?: string; series?: string }>;
 }) {
   const { siteId } = await params;
   const query = await searchParams;
   const range = resolveFormMonitorRange(query);
-  const includeSpam = formMonitorIncludeSpam(query.spam);
-  const data = await getSiteChart(siteId, { ...query, includeSpam });
+  const series = resolveFormMonitorSeries(query.series);
+  const data = await getSiteChart(siteId, { ...query, series: query.series });
   if (!data) notFound();
 
   const title = formatSiteTitle(data.site.url, data.site.label);
@@ -39,7 +39,7 @@ export default async function FormMonitorSitePage({
       <SetPageHeader
         title={title}
         crumbs={[
-          { label: "Form Monitor", href: `/form-monitor${formMonitorRangeQuery(range, includeSpam)}` },
+          { label: "Form Monitor", href: `/form-monitor${formMonitorRangeQuery(range, series)}` },
           { label: title },
         ]}
       />
@@ -54,9 +54,9 @@ export default async function FormMonitorSitePage({
         range={query.range}
         since={query.since}
         until={query.until}
-        includeSpam={includeSpam}
+        series={query.series}
       />
-      <FormMonitorRecords records={data.records} siteUrl={data.site.url} includeSpam={includeSpam} />
+      <FormMonitorRecords records={data.records} siteUrl={data.site.url} series={series} />
     </div>
   );
 }

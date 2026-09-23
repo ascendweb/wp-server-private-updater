@@ -18,6 +18,7 @@ const badgeVariants = cva("group/badge inline-flex w-fit shrink-0 items-center j
       error: "border-red-100 bg-red-100 text-red-800 dark:border-red-950 dark:bg-red-950 dark:text-red-400",
       warn: "border-orange-100 bg-orange-100 text-orange-800 dark:border-orange-950 dark:bg-orange-950 dark:text-orange-400",
       info: "border-blue-100 bg-blue-100 text-blue-800 dark:border-blue-950 dark:bg-blue-950 dark:text-blue-400",
+      test: "border-purple-100 bg-purple-100 text-purple-800 dark:border-purple-950 dark:bg-purple-950 dark:text-purple-400",
       subtle: "border-muted bg-muted text-muted-foreground dark:border-muted dark:bg-muted dark:text-muted-foreground",
     },
   },

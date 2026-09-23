@@ -14,14 +14,17 @@ type SettingsPayload = {
   trackingWebhookUrl: string;
   missingWebhookUrl: string | null;
   checkDelayMinutes: number;
+  testQueryParams: string;
 };
 
 export function FormMonitorSettingsClient() {
   const [settings, setSettings] = useState<SettingsPayload | null>(null);
   const [missingUrl, setMissingUrl] = useState("");
   const [delayMinutes, setDelayMinutes] = useState("60");
+  const [testParams, setTestParams] = useState("checkview_test_id");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingTests, setSavingTests] = useState(false);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [rotating, setRotating] = useState(false);
 
@@ -39,6 +42,7 @@ export function FormMonitorSettingsClient() {
       setSettings(data);
       setMissingUrl(data.missingWebhookUrl ?? "");
       setDelayMinutes(String(data.checkDelayMinutes ?? 60));
+      setTestParams(data.testQueryParams ?? "checkview_test_id");
     }
     setLoading(false);
   }
@@ -95,6 +99,29 @@ export function FormMonitorSettingsClient() {
       toast.error(err.error || "Failed to save settings");
     }
     setSaving(false);
+  }
+
+  async function saveTestParams(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingTests(true);
+    const res = await fetch("/api/v1/form-monitor/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save-test-params",
+        testQueryParams: testParams,
+      }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as SettingsPayload;
+      setSettings(data);
+      setTestParams(data.testQueryParams ?? "");
+      toast.success("Test parameters saved");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "Failed to save test parameters");
+    }
+    setSavingTests(false);
   }
 
   return (
@@ -162,6 +189,32 @@ export function FormMonitorSettingsClient() {
                 </div>
                 <Button type="submit" disabled={saving}>
                   {saving ? "Saving..." : "Save"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Test parameters</CardTitle>
+              <CardDescription>
+                Comma-separated query parameter names. A submission is marked Test when its Gravity Forms
+                source URL includes any of these names, for example <code>checkview_test_id</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={saveTestParams} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="testQueryParams">Parameter names</Label>
+                  <Input
+                    id="testQueryParams"
+                    value={testParams}
+                    onChange={(event) => setTestParams(event.target.value)}
+                    placeholder="checkview_test_id"
+                  />
+                </div>
+                <Button type="submit" disabled={savingTests}>
+                  {savingTests ? "Saving..." : "Save"}
                 </Button>
               </form>
             </CardContent>

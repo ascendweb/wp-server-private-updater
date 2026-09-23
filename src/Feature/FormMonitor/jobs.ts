@@ -58,7 +58,7 @@ export async function handleCheckTracking(referenceId: string): Promise<void> {
     include: { site: { select: { url: true, label: true } } },
   });
 
-  if (!lead?.formReceivedAt || lead.trackingReceivedAt || lead.missingNotifiedAt || lead.ignoredAt || lead.isSpam) {
+  if (!lead?.formReceivedAt || lead.trackingReceivedAt || lead.missingNotifiedAt || lead.ignoredAt || lead.isSpam || lead.isTest || lead.deletedAt) {
     return;
   }
 

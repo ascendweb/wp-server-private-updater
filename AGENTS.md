@@ -29,7 +29,7 @@ npm run dev
 - **License** — key bound to a site URL; WordPress client APIs authenticate with this
 - **SitePlugin** — per-site install: version, active, locked, pinned version, autoSync
 - **Command** — queued work for a site. Jobs (`update`, `install`, `rollback`, `activate`, `deactivate`, `refresh`, `purge_cache`) have `schedule: true` and a JSON `payload`. RPCs (`list_tools`, `call_ability`) are claimed by signed command id and never drained by the scheduled poll.
-- **FormMonitorLead** — form vs tracking match keyed by `referenceId` (`src/Feature/FormMonitor/`)
+- **FormMonitorLead** — form vs tracking match keyed by `referenceId`; `sourceUrl` / `fields`, `isTest` (query param names), `deletedAt` (`src/Feature/FormMonitor/`)
 - **SsoTicket** — one-time hashed secret to open wp-admin as an existing WordPress user. Minted by a dashboard session; redeemed by the site with `siteToken`.
 - **McpOAuthClient** — public (CIMD/DCR) or service clients for the fleet MCP
 

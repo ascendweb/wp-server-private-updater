@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateLicense, ensureSite } from "@/lib/license";
 import { recordFormEvent } from "@/Feature/FormMonitor/matching";
-import { parseOptionalInt, parseSubmittedAt } from "@/Feature/FormMonitor/protocol";
+import { parseFormMonitorFields, parseOptionalInt, parseSourceUrl, parseSubmittedAt } from "@/Feature/FormMonitor/protocol";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { license_key, site_url, reference_id, submitted_at, form_id, entry_id, form_title, spam } = body as {
+  const { license_key, site_url, reference_id, submitted_at, form_id, entry_id, form_title, spam, source_url, fields } = body as {
     license_key?: string;
     site_url?: string;
     reference_id?: string;
@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     entry_id?: unknown;
     form_title?: unknown;
     spam?: unknown;
+    source_url?: unknown;
+    fields?: unknown;
   };
 
   if (!license_key || !site_url || !reference_id) {
@@ -41,6 +43,8 @@ export async function POST(req: NextRequest) {
     formTitle: typeof form_title === "string" && form_title.trim() ? form_title.trim() : null,
     submittedAt: parseSubmittedAt(submitted_at),
     spam: spam === true,
+    sourceUrl: parseSourceUrl(source_url),
+    fields: parseFormMonitorFields(fields),
   });
 
   return NextResponse.json({ success: true });

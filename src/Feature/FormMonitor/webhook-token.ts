@@ -50,6 +50,34 @@ export async function saveMissingSettings(input: {
   });
 }
 
+export async function saveTestQueryParams(testQueryParams: string[]) {
+  await getFormMonitorSettings();
+  return prisma.formMonitorSetting.update({
+    where: { id: SETTING_ID },
+    data: { testQueryParams },
+  });
+}
+
+export function normalizeTestQueryParams(value: unknown): string[] {
+  const raw =
+    typeof value === "string"
+      ? value
+      : Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string").join(",")
+        : "";
+  const seen = new Set<string>();
+  const params: string[] = [];
+  for (const part of raw.split(",")) {
+    const name = part.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    params.push(name);
+  }
+  return params;
+}
+
 export function normalizeCheckDelayMinutes(value: unknown): number | null {
   const parsed =
     typeof value === "number"

@@ -112,11 +112,12 @@ Isolated form vs tracking pipeline. Gravity Forms reports submissions; WhatConve
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| POST | `/api/v1/form-monitor/events` | license key + site URL | Record a form submission (`reference_id`, optional form/entry ids) |
+| POST | `/api/v1/form-monitor/events` | license key + site URL | Record a form submission (`reference_id`, optional form/entry ids, `source_url`, labeled `fields`) |
+| POST | `/api/v1/form-monitor/events/delete` | license key + site URL | Mark a non-test entry deleted (`entry_id`) |
 | POST | `/api/v1/form-monitor/webhooks/tracking/:token` | unguessable URL | Record a tracking confirmation; ignored without `tacowp_reference_id` |
-| GET/POST | `/api/v1/form-monitor/settings` | session | Tracking webhook URL (copy/rotate), outbound missing-tracking URL, and check delay (minutes) |
+| GET/POST | `/api/v1/form-monitor/settings` | session | Tracking webhook URL (copy/rotate), outbound missing-tracking URL, check delay (minutes), and test query parameters |
 | GET | `/api/v1/form-monitor/sites` | session | Per-site last form, last tracking, missing last 7 days |
-| GET | `/api/v1/form-monitor/sites/:siteId` | session | 7-day submissions vs missing buckets, plus last 15 records |
+| GET | `/api/v1/form-monitor/sites/:siteId` | session | Range chart buckets and last 15 records |
 | POST | `/api/v1/form-monitor/sites/:siteId/mark-fixed` | session | Ignore unmatched form events for a site (`ignoredAt`) |
 
 ### Commands (siteToken)

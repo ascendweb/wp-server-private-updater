@@ -4,21 +4,25 @@ import {
   getFormMonitorSettings,
   isAllowedWebhookUrl,
   normalizeCheckDelayMinutes,
+  normalizeTestQueryParams,
   rotateTrackingWebhookToken,
   saveMissingSettings,
+  saveTestQueryParams,
   trackingWebhookUrl,
 } from "@/Feature/FormMonitor/webhook-token";
-import { DEFAULT_CHECK_DELAY_MINUTES } from "@/Feature/FormMonitor/protocol";
+import { DEFAULT_CHECK_DELAY_MINUTES, DEFAULT_TEST_QUERY_PARAMS } from "@/Feature/FormMonitor/protocol";
 
 function serializeSettings(settings: {
   trackingWebhookToken: string;
   missingWebhookUrl: string | null;
   checkDelayMinutes: number;
+  testQueryParams: string[];
 }) {
   return {
     trackingWebhookUrl: trackingWebhookUrl(settings.trackingWebhookToken),
     missingWebhookUrl: settings.missingWebhookUrl,
     checkDelayMinutes: settings.checkDelayMinutes ?? DEFAULT_CHECK_DELAY_MINUTES,
+    testQueryParams: (settings.testQueryParams ?? DEFAULT_TEST_QUERY_PARAMS).join(", "),
   };
 }
 
@@ -59,6 +63,11 @@ export async function POST(req: NextRequest) {
       missingWebhookUrl: raw || null,
       checkDelayMinutes: delay,
     });
+    return NextResponse.json(serializeSettings(settings));
+  }
+
+  if (action === "save-test-params") {
+    const settings = await saveTestQueryParams(normalizeTestQueryParams(body.testQueryParams));
     return NextResponse.json(serializeSettings(settings));
   }
 

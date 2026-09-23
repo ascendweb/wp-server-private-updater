@@ -235,6 +235,7 @@ model FormMonitorSetting {
   trackingWebhookToken String   @unique
   missingWebhookUrl    String?
   checkDelayMinutes    Int      @default(60)
+  testQueryParams      String[] @default(["checkview_test_id"])
   updatedAt            DateTime @updatedAt
 }
 
@@ -246,16 +247,21 @@ model FormMonitorLead {
   formId             Int?
   entryId            Int?
   formTitle          String?
+  sourceUrl          String?
+  fields             Json?
   isSpam             Boolean   @default(false)
+  isTest             Boolean   @default(false)
   formReceivedAt     DateTime?
   trackingReceivedAt DateTime?
   trackingId         String?
   missingNotifiedAt  DateTime?
   ignoredAt          DateTime?
+  deletedAt          DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   @@index([siteId, formReceivedAt])
   @@index([siteId, trackingReceivedAt])
+  @@index([siteId, entryId])
 }
 

@@ -15,11 +15,11 @@ import { formatSiteHost } from "@/lib/site-url";
 import { VisitSiteLink } from "@/components/visit-site-link";
 import { RelativeTime } from "@/components/relative-time";
 import { cn } from "@/lib/utils";
-import { formMonitorIncludeSpam, formMonitorRangeQuery, resolveFormMonitorRange, utcDayKey } from "@/Feature/FormMonitor/range";
+import { formMonitorRangeQuery, resolveFormMonitorRange, resolveFormMonitorSeries, utcDayKey } from "@/Feature/FormMonitor/range";
 import type { FormMonitorDayBucket, FormMonitorSiteSummary, FormMonitorTotals, FormMonitorTrend } from "@/Feature/FormMonitor/types";
 import { FormMonitorSiteChartCard } from "./form-monitor-chart";
 
-const emptyTotals: FormMonitorTotals = { submitted: 0, missing: 0, spam: 0, trackedRate: null };
+const emptyTotals: FormMonitorTotals = { submitted: 0, missing: 0, spam: 0, deleted: 0, test: 0, trackedRate: null };
 
 function overviewQuery(rangeId: string, sinceKey: string, untilKey: string) {
   const params = new URLSearchParams();
@@ -63,8 +63,8 @@ export function FormMonitorListClient() {
   const [days, setDays] = useState<FormMonitorDayBucket[]>([]);
   const [totals, setTotals] = useState<FormMonitorTotals>(emptyTotals);
   const [busy, setBusy] = useState<string | null>(null);
-  const includeSpam = formMonitorIncludeSpam(search.get("spam"));
-  const rangeQuery = formMonitorRangeQuery(range, includeSpam);
+  const series = resolveFormMonitorSeries(search.get("series"));
+  const rangeQuery = formMonitorRangeQuery(range, series);
   const sinceKey = utcDayKey(range.since);
   const untilKey = utcDayKey(range.until);
   const rangeKey = `${range.id}:${sinceKey}:${untilKey}`;
@@ -122,7 +122,7 @@ export function FormMonitorListClient() {
 
   return (
     <div className="space-y-6">
-      <FormMonitorSiteChartCard days={days} totals={totals} title="Form submissions" range={search.get("range")} since={search.get("since")} until={search.get("until")} includeSpam={includeSpam} />
+      <FormMonitorSiteChartCard days={days} totals={totals} title="Form submissions" range={search.get("range")} since={search.get("since")} until={search.get("until")} series={search.get("series")} />
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>

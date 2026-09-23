@@ -106,18 +106,49 @@ export function resolveFormMonitorRange(input?: {
   return { id: "last-7", since: addUtcDays(today, -6), until: endOfUtcDay(today) };
 }
 
-export function formMonitorIncludeSpam(value: string | null | undefined): boolean {
-  return value === "1" || value === "true";
+export const FORM_MONITOR_SERIES_IDS = ["submissions", "missing", "spam", "deleted", "test"] as const;
+
+export type FormMonitorSeriesId = (typeof FORM_MONITOR_SERIES_IDS)[number];
+
+export const FORM_MONITOR_SERIES_LABELS: Record<FormMonitorSeriesId, string> = {
+  submissions: "Submissions",
+  missing: "Missing Tracking",
+  spam: "Spam",
+  deleted: "Deleted",
+  test: "Test",
+};
+
+export const FORM_MONITOR_SERIES_DEFAULT: FormMonitorSeriesId[] = ["submissions", "missing"];
+
+function isSeriesId(value: string): value is FormMonitorSeriesId {
+  return FORM_MONITOR_SERIES_IDS.includes(value as FormMonitorSeriesId);
 }
 
-export function formMonitorRangeQuery(range: ResolvedFormMonitorRange, includeSpam = false): string {
+export function resolveFormMonitorSeries(value?: string | null): FormMonitorSeriesId[] {
+  if (value === "none") return [];
+  if (!value) return [...FORM_MONITOR_SERIES_DEFAULT];
+  const seen = new Set<FormMonitorSeriesId>();
+  for (const part of value.split(",")) {
+    const id = part.trim();
+    if (isSeriesId(id)) seen.add(id);
+  }
+  return seen.size === 0 && value.trim() !== "none" ? [...FORM_MONITOR_SERIES_DEFAULT] : [...seen];
+}
+
+function seriesIsDefault(series: FormMonitorSeriesId[]): boolean {
+  return series.length === FORM_MONITOR_SERIES_DEFAULT.length && FORM_MONITOR_SERIES_DEFAULT.every((id) => series.includes(id));
+}
+
+export function formMonitorRangeQuery(range: ResolvedFormMonitorRange, series: FormMonitorSeriesId[] = FORM_MONITOR_SERIES_DEFAULT): string {
   const params = new URLSearchParams();
   if (range.id !== "last-7") params.set("range", range.id);
   if (range.id === "custom") {
     params.set("since", utcDayKey(range.since));
     params.set("until", utcDayKey(range.until));
   }
-  if (includeSpam) params.set("spam", "1");
+  if (!seriesIsDefault(series)) {
+    params.set("series", series.length === 0 ? "none" : series.join(","));
+  }
   const query = params.toString();
   return query ? `?${query}` : "";
 }

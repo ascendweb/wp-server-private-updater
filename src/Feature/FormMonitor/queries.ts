@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { activeSiteWhere } from "@/lib/site-status";
 import { sortBySiteUrl } from "@/lib/site-url";
 import type {
@@ -9,7 +10,13 @@ import type {
   FormMonitorTrend,
 } from "./types";
 import { FORM_MONITOR_EVENT_LIMIT } from "./protocol";
-import { resolveFormMonitorRange, utcDayKey, type ResolvedFormMonitorRange } from "./range";
+import {
+  resolveFormMonitorRange,
+  resolveFormMonitorSeries,
+  utcDayKey,
+  type FormMonitorSeriesId,
+  type ResolvedFormMonitorRange,
+} from "./range";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -36,7 +43,7 @@ export type FormMonitorEventRecord = FormMonitorLeadRecord & {
   siteId: string | null;
   siteUrl: string | null;
   siteLabel: string | null;
-  status: "tracked" | "missing" | "fixed" | "spam";
+  status: "tracked" | "missing" | "fixed" | "spam" | "test" | "deleted";
 };
 
 function parseIsoDate(value: string, field: string): Date {
@@ -56,11 +63,19 @@ export function formMonitorRange(since?: string, until?: string): FormMonitorRan
   return { since: parsedSince, until: parsedUntil };
 }
 
+function countedLeadWhere() {
+  return { isSpam: false, isTest: false, deletedAt: null };
+}
+
 function leadStatus(record: {
   trackingReceivedAt: Date | string | null;
   ignoredAt: Date | string | null;
+  deletedAt?: Date | string | null;
   isSpam: boolean;
-}): "tracked" | "missing" | "fixed" | "spam" {
+  isTest?: boolean;
+}): "tracked" | "missing" | "fixed" | "spam" | "test" | "deleted" {
+  if (record.isTest) return "test";
+  if (record.deletedAt) return "deleted";
   if (record.isSpam) return "spam";
   if (record.trackingReceivedAt) return "tracked";
   if (record.ignoredAt) return "fixed";
@@ -87,7 +102,7 @@ export async function listSiteSummariesInRange(input: {
   const [lastForm, lastTracking, missing, openMissing] = await Promise.all([
     prisma.formMonitorLead.groupBy({
       by: ["siteId"],
-      where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, isSpam: false },
+      where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, ...countedLeadWhere() },
       _max: { formReceivedAt: true },
     }),
     prisma.formMonitorLead.groupBy({
@@ -101,7 +116,7 @@ export async function listSiteSummariesInRange(input: {
         siteId: { in: siteIds },
         formReceivedAt: inWindow,
         trackingReceivedAt: null,
-        isSpam: false,
+        ...countedLeadWhere(),
       },
       _count: { _all: true },
     }),
@@ -112,7 +127,7 @@ export async function listSiteSummariesInRange(input: {
         formReceivedAt: inWindow,
         trackingReceivedAt: null,
         ignoredAt: null,
-        isSpam: false,
+        ...countedLeadWhere(),
       },
       _count: { _all: true },
     }),
@@ -153,7 +168,7 @@ export async function listRecentFormEvents(input: {
       formReceivedAt: { gte: input.since, lte: input.until },
       ...(input.siteIds?.length ? { siteId: { in: input.siteIds } } : {}),
       ...(input.missingOnly
-        ? { trackingReceivedAt: null, ignoredAt: null, isSpam: false }
+        ? { trackingReceivedAt: null, ignoredAt: null, isSpam: false, isTest: false, deletedAt: null }
         : {}),
     },
     orderBy: { formReceivedAt: "desc" },
@@ -163,11 +178,13 @@ export async function listRecentFormEvents(input: {
       referenceId: true,
       formTitle: true,
       isSpam: true,
+      isTest: true,
       formId: true,
       entryId: true,
       formReceivedAt: true,
       trackingReceivedAt: true,
       ignoredAt: true,
+      deletedAt: true,
       siteId: true,
       site: { select: { url: true, label: true } },
     },
@@ -191,12 +208,14 @@ type LeadSlice = {
   formReceivedAt: Date | null;
   trackingReceivedAt: Date | null;
   isSpam: boolean;
+  isTest: boolean;
+  deletedAt: Date | null;
 };
 
 function dayBuckets(since: Date, until: Date): FormMonitorDayBucket[] {
   const buckets: FormMonitorDayBucket[] = [];
   for (let time = startOfUtcDay(since).getTime(); time <= startOfUtcDay(until).getTime(); time += DAY_MS) {
-    buckets.push({ date: utcDayKey(new Date(time)), submissions: 0, missing: 0, spam: 0 });
+    buckets.push({ date: utcDayKey(new Date(time)), submissions: 0, missing: 0, spam: 0, deleted: 0, test: 0 });
   }
   return buckets;
 }
@@ -209,6 +228,14 @@ function fillDayBuckets(leads: LeadSlice[], since: Date, until: Date): FormMonit
     if (!lead.formReceivedAt) continue;
     const bucket = byDate.get(utcDayKey(lead.formReceivedAt));
     if (!bucket) continue;
+    if (lead.isTest) {
+      bucket.test += 1;
+      continue;
+    }
+    if (lead.deletedAt) {
+      bucket.deleted += 1;
+      continue;
+    }
     if (lead.isSpam) {
       bucket.spam += 1;
       continue;
@@ -224,10 +251,14 @@ function totalsFromBuckets(buckets: FormMonitorDayBucket[]): FormMonitorTotals {
   const submitted = buckets.reduce((sum, bucket) => sum + bucket.submissions, 0);
   const missing = buckets.reduce((sum, bucket) => sum + bucket.missing, 0);
   const spam = buckets.reduce((sum, bucket) => sum + bucket.spam, 0);
+  const deleted = buckets.reduce((sum, bucket) => sum + bucket.deleted, 0);
+  const test = buckets.reduce((sum, bucket) => sum + bucket.test, 0);
   return {
     submitted,
     missing,
     spam,
+    deleted,
+    test,
     trackedRate: submitted === 0 ? null : (submitted - missing) / submitted,
   };
 }
@@ -288,7 +319,7 @@ function trendForCounts(
 function siteDayCounts(leads: LeadSlice[], siteId: string): Map<string, number> {
   const counts = new Map<string, number>();
   for (const lead of leads) {
-    if (lead.siteId !== siteId || lead.isSpam || !lead.formReceivedAt) continue;
+    if (lead.siteId !== siteId || lead.isSpam || lead.isTest || lead.deletedAt || !lead.formReceivedAt) continue;
     const key = utcDayKey(lead.formReceivedAt);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
@@ -323,7 +354,7 @@ export async function listOverview(rangeInput?: {
     ? await Promise.all([
         prisma.formMonitorLead.groupBy({
           by: ["siteId"],
-          where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, isSpam: false },
+          where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, ...countedLeadWhere() },
           _max: { formReceivedAt: true },
         }),
         prisma.formMonitorLead.groupBy({
@@ -333,12 +364,12 @@ export async function listOverview(rangeInput?: {
         }),
         prisma.formMonitorLead.groupBy({
           by: ["siteId"],
-          where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, isSpam: false },
+          where: { siteId: { in: siteIds }, formReceivedAt: { not: null }, ...countedLeadWhere() },
           _min: { formReceivedAt: true },
         }),
         prisma.formMonitorLead.findMany({
           where: { siteId: { in: siteIds }, formReceivedAt: { gte: fetchSince, lte: range.until } },
-          select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true },
+          select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true, isTest: true, deletedAt: true },
         }),
       ])
     : [[], [], [], []];
@@ -380,7 +411,7 @@ export async function getSiteChart(
     since?: string | null;
     until?: string | null;
     now?: Date;
-    includeSpam?: boolean;
+    series?: string | null;
   }
 ) {
   const site = await prisma.site.findUnique({
@@ -391,13 +422,14 @@ export async function getSiteChart(
 
   const now = rangeInput?.now ?? new Date();
   const range = resolveFormMonitorRange({ ...rangeInput, now });
+  const series = resolveFormMonitorSeries(rangeInput?.series);
   const [leads, recent] = await Promise.all([
     prisma.formMonitorLead.findMany({
       where: { siteId, formReceivedAt: { gte: range.since, lte: range.until } },
-      select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true },
+      select: { siteId: true, formReceivedAt: true, trackingReceivedAt: true, isSpam: true, isTest: true, deletedAt: true },
     }),
     prisma.formMonitorLead.findMany({
-      where: { siteId, ...(rangeInput?.includeSpam ? {} : { isSpam: false }) },
+      where: { siteId, ...recordsWhere(series) },
       orderBy: { createdAt: "desc" },
       take: FORM_MONITOR_EVENT_LIMIT,
       select: {
@@ -405,11 +437,13 @@ export async function getSiteChart(
         referenceId: true,
         formTitle: true,
         isSpam: true,
+        isTest: true,
         formId: true,
         entryId: true,
         formReceivedAt: true,
         trackingReceivedAt: true,
         ignoredAt: true,
+        deletedAt: true,
       },
     }),
   ]);
@@ -424,6 +458,32 @@ export async function getSiteChart(
   };
 }
 
+function recordsWhere(series: FormMonitorSeriesId[]): Prisma.FormMonitorLeadWhereInput {
+  const clauses: Prisma.FormMonitorLeadWhereInput[] = [];
+  if (series.includes("test")) clauses.push({ isTest: true });
+  if (series.includes("deleted")) clauses.push({ isTest: false, deletedAt: { not: null } });
+  if (series.includes("spam")) clauses.push({ isTest: false, deletedAt: null, isSpam: true });
+  if (series.includes("missing")) {
+    clauses.push({
+      isTest: false,
+      deletedAt: null,
+      isSpam: false,
+      trackingReceivedAt: null,
+      ignoredAt: null,
+    });
+  }
+  if (series.includes("submissions")) {
+    clauses.push({
+      isTest: false,
+      deletedAt: null,
+      isSpam: false,
+      OR: [{ trackingReceivedAt: { not: null } }, { ignoredAt: { not: null } }],
+    });
+  }
+  if (clauses.length === 0) return { id: { in: [] } };
+  return { OR: clauses };
+}
+
 export async function markSiteMissingIgnored(siteId: string): Promise<number> {
   const result = await prisma.formMonitorLead.updateMany({
     where: {
@@ -431,7 +491,7 @@ export async function markSiteMissingIgnored(siteId: string): Promise<number> {
       formReceivedAt: { not: null },
       trackingReceivedAt: null,
       ignoredAt: null,
-      isSpam: false,
+      ...countedLeadWhere(),
     },
     data: { ignoredAt: new Date() },
   });
@@ -443,21 +503,25 @@ function serializeLeadRecord(lead: {
   referenceId: string;
   formTitle: string | null;
   isSpam: boolean;
+  isTest: boolean;
   formId: number | null;
   entryId: number | null;
   formReceivedAt: Date | null;
   trackingReceivedAt: Date | null;
   ignoredAt: Date | null;
+  deletedAt: Date | null;
 }): FormMonitorLeadRecord {
   return {
     id: lead.id,
     referenceId: lead.referenceId,
     formTitle: lead.formTitle,
     isSpam: lead.isSpam,
+    isTest: lead.isTest,
     formId: lead.formId,
     entryId: lead.entryId,
     formReceivedAt: lead.formReceivedAt?.toISOString() ?? null,
     trackingReceivedAt: lead.trackingReceivedAt?.toISOString() ?? null,
     ignoredAt: lead.ignoredAt?.toISOString() ?? null,
+    deletedAt: lead.deletedAt?.toISOString() ?? null,
   };
 }
