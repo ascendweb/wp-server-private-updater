@@ -108,7 +108,7 @@ export function FormMonitorRecords({
                       <span className="inline-flex items-center gap-2">
                         <RelativeTime value={record.formReceivedAt} />
                         {record.deletedAt ? (
-                          <span>Deleted</span>
+                          <span className="text-destructive opacity-0 group-hover:opacity-100">Deleted</span>
                         ) : record.formId && record.entryId ? (
                           <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" />
                         ) : null}
