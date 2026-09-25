@@ -7,6 +7,7 @@ export type FormMonitorTotals = {
   submitted: number;
   missing: number;
   spam: number;
+  potentialSpam: number;
   deleted: number;
   test: number;
   trackedRate: number | null;
@@ -30,6 +31,7 @@ export type FormMonitorDayBucket = {
   submissions: number;
   missing: number;
   spam: number;
+  potentialSpam: number;
   deleted: number;
   test: number;
 };
@@ -39,12 +41,15 @@ export type FormMonitorLeadRecord = {
   referenceId: string;
   formTitle: string | null;
   isSpam: boolean;
+  isTrackingSpam: boolean;
   isTest: boolean;
   formId: number | null;
   entryId: number | null;
   formReceivedAt: string | null;
   trackingReceivedAt: string | null;
   trackingId: string | null;
+  trackingUrl: string | null;
+  trackingPlatform: string | null;
   ignoredAt: string | null;
   deletedAt: string | null;
 };

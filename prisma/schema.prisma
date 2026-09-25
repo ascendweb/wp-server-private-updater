@@ -236,6 +236,9 @@ model FormMonitorSetting {
   missingWebhookUrl    String?
   checkDelayMinutes    Int      @default(60)
   testQueryParams      String[] @default(["checkview_test_id"])
+  trendBandPercent     Int      @default(15)
+  trendAbsDelta        Int      @default(2)
+  whatConvertsUrl      String?
   updatedAt            DateTime @updatedAt
 }
 
@@ -250,10 +253,13 @@ model FormMonitorLead {
   sourceUrl          String?
   fields             Json?
   isSpam             Boolean   @default(false)
+  isTrackingSpam     Boolean   @default(false)
   isTest             Boolean   @default(false)
   formReceivedAt     DateTime?
   trackingReceivedAt DateTime?
   trackingId         String?
+  trackingPlatform   String?
+  trackingMeta       Json?
   missingNotifiedAt  DateTime?
   ignoredAt          DateTime?
   deletedAt          DateTime?

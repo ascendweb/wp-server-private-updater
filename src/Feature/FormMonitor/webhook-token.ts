@@ -58,6 +58,25 @@ export async function saveTestQueryParams(testQueryParams: string[]) {
   });
 }
 
+export async function saveTrendSettings(input: { trendBandPercent: number; trendAbsDelta: number }) {
+  await getFormMonitorSettings();
+  return prisma.formMonitorSetting.update({
+    where: { id: SETTING_ID },
+    data: {
+      trendBandPercent: input.trendBandPercent,
+      trendAbsDelta: input.trendAbsDelta,
+    },
+  });
+}
+
+export async function saveWhatConvertsUrl(whatConvertsUrl: string | null) {
+  await getFormMonitorSettings();
+  return prisma.formMonitorSetting.update({
+    where: { id: SETTING_ID },
+    data: { whatConvertsUrl },
+  });
+}
+
 export function normalizeTestQueryParams(value: unknown): string[] {
   const raw =
     typeof value === "string"
@@ -79,6 +98,28 @@ export function normalizeTestQueryParams(value: unknown): string[] {
 }
 
 export function normalizeCheckDelayMinutes(value: unknown): number | null {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number.parseInt(value, 10)
+        : NaN;
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
+export function normalizeTrendBandPercent(value: unknown): number | null {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number.parseInt(value, 10)
+        : NaN;
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) return null;
+  return parsed;
+}
+
+export function normalizeTrendAbsDelta(value: unknown): number | null {
   const parsed =
     typeof value === "number"
       ? value

@@ -106,7 +106,7 @@ export function resolveFormMonitorRange(input?: {
   return { id: "last-7", since: addUtcDays(today, -6), until: endOfUtcDay(today) };
 }
 
-export const FORM_MONITOR_SERIES_IDS = ["submissions", "missing", "spam", "deleted", "test"] as const;
+export const FORM_MONITOR_SERIES_IDS = ["submissions", "missing", "spam", "potentialSpam", "deleted", "test"] as const;
 
 export type FormMonitorSeriesId = (typeof FORM_MONITOR_SERIES_IDS)[number];
 
@@ -114,6 +114,7 @@ export const FORM_MONITOR_SERIES_LABELS: Record<FormMonitorSeriesId, string> = {
   submissions: "Submissions",
   missing: "Missing Tracking",
   spam: "Spam",
+  potentialSpam: "Potential Spam",
   deleted: "Deleted",
   test: "Test",
 };

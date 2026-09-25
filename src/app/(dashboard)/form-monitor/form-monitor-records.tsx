@@ -2,28 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDownIcon, Copy, Flag } from "lucide-react";
+import Image from "next/image";
+import { ChevronDownIcon, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RelativeTime } from "@/components/relative-time";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { FormMonitorFormSummary, FormMonitorLeadRecord } from "@/Feature/FormMonitor/types";
-import {
-  FORM_MONITOR_SERIES_DEFAULT,
-  formMonitorRangeQuery,
-  type FormMonitorSeriesId,
-  type ResolvedFormMonitorRange,
-} from "@/Feature/FormMonitor/range";
+import { TRACKING_PLATFORM_WHATCONVERTS } from "@/Feature/FormMonitor/protocol";
+import { FORM_MONITOR_SERIES_DEFAULT, formMonitorRangeQuery, type FormMonitorSeriesId, type ResolvedFormMonitorRange } from "@/Feature/FormMonitor/range";
 
 function formLabel(record: { formTitle: string | null; formId: number | null }) {
   if (record.formTitle) return record.formTitle;
@@ -31,22 +22,19 @@ function formLabel(record: { formTitle: string | null; formId: number | null }) 
   return "Untitled form";
 }
 
-function statusOf(record: FormMonitorLeadRecord): { label: string; variant: "success" | "warn" | "subtle" | "test" } {
+function statusOf(record: FormMonitorLeadRecord): { label: string; variant: "success" | "warn" | "error" | "subtle" | "test" } {
   if (record.isTest) return { label: "Test", variant: "test" };
   if (record.deletedAt) return { label: "Deleted", variant: "subtle" };
+  if (record.isSpam && (!(record.trackingReceivedAt || record.trackingId) || record.isTrackingSpam)) {
+    return { label: "Spam", variant: "warn" };
+  }
   if (record.trackingReceivedAt || record.trackingId) return { label: "Tracked", variant: "success" };
-  if (record.isSpam) return { label: "Spam", variant: "subtle" };
   if (record.ignoredAt) return { label: "Fixed", variant: "subtle" };
-  return { label: "Missing", variant: "warn" };
+  return { label: "Missing", variant: "error" };
 }
 
 function isPotentialSpam(record: FormMonitorLeadRecord) {
-  return Boolean(
-    !record.isTest &&
-      !record.deletedAt &&
-      record.isSpam &&
-      (record.trackingReceivedAt || record.trackingId),
-  );
+  return Boolean(!record.isTest && !record.deletedAt && (record.trackingReceivedAt || record.trackingId) && record.isSpam !== record.isTrackingSpam);
 }
 
 function gfAdminUrl(siteUrl: string, formId: number, entryId?: number) {
@@ -70,40 +58,38 @@ function ViewLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function PotentialSpamFlag() {
+function trackingSpamIcon(platform: string | null): { src: string; alt: string } | null {
+  if (platform === TRACKING_PLATFORM_WHATCONVERTS) {
+    return { src: "/icons/whatconverts.svg", alt: "WhatConverts" };
+  }
+  return null;
+}
+
+function PotentialSpamFlag({ record }: { record: FormMonitorLeadRecord }) {
+  const sources: { src: string; alt: string }[] = [];
+  if (record.isSpam) sources.push({ src: "/icons/gravityforms.svg", alt: "Gravity Forms" });
+  if (record.isTrackingSpam) {
+    const tracking = trackingSpamIcon(record.trackingPlatform);
+    if (tracking) sources.push(tracking);
+  }
+  const who = sources.map((source) => source.alt).join(" and ") || "unknown source";
+
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
-            type="button"
-            className="inline-flex size-3.5 shrink-0 items-center justify-center text-orange-500"
-            aria-label="Potentially Spam"
-          >
+          <button type="button" className="inline-flex size-3.5 shrink-0 items-center justify-center text-orange-500" aria-label={`Potential Spam, ${who}`}>
             <Flag className="size-3.5" />
           </button>
         }
       />
-      <TooltipContent>Potentially Spam</TooltipContent>
+      <TooltipContent>
+        Potential Spam
+        {sources.map((source) => (
+          <Image key={source.src} src={source.src} alt={source.alt} width={14} height={14} className="size-3.5" />
+        ))}
+      </TooltipContent>
     </Tooltip>
-  );
-}
-
-function CopyTrackingId({ trackingId }: { trackingId: string }) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="h-6 w-6 opacity-0 group-hover:opacity-100"
-      aria-label="Copy tracking ID"
-      onClick={() => {
-        navigator.clipboard.writeText(trackingId);
-        toast.success("Tracking ID copied");
-      }}
-    >
-      <Copy className="size-3.5" />
-    </Button>
   );
 }
 
@@ -117,31 +103,12 @@ function rateBadge(rate: number | null) {
 }
 
 function seriesQuery(series: FormMonitorSeriesId[]) {
-  const isDefault =
-    series.length === FORM_MONITOR_SERIES_DEFAULT.length && FORM_MONITOR_SERIES_DEFAULT.every((id) => series.includes(id));
+  const isDefault = series.length === FORM_MONITOR_SERIES_DEFAULT.length && FORM_MONITOR_SERIES_DEFAULT.every((id) => series.includes(id));
   if (isDefault) return "";
   return series.length === 0 ? "none" : series.join(",");
 }
 
-export function FormMonitorRecords({
-  siteId,
-  siteUrl,
-  series,
-  range,
-  group,
-  forms,
-  records: initialRecords,
-  nextCursor: initialCursor,
-}: {
-  siteId: string;
-  siteUrl: string;
-  series: FormMonitorSeriesId[];
-  range: ResolvedFormMonitorRange;
-  group: "none" | "form";
-  forms: FormMonitorFormSummary[];
-  records: FormMonitorLeadRecord[];
-  nextCursor: string | null;
-}) {
+export function FormMonitorRecords({ siteId, siteUrl, series, range, group, forms, records: initialRecords, nextCursor: initialCursor }: { siteId: string; siteUrl: string; series: FormMonitorSeriesId[]; range: ResolvedFormMonitorRange; group: "none" | "form"; forms: FormMonitorFormSummary[]; records: FormMonitorLeadRecord[]; nextCursor: string | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const [records, setRecords] = useState(initialRecords);
@@ -203,9 +170,7 @@ export function FormMonitorRecords({
     <Card>
       <CardHeader>
         <CardTitle>{grouped ? "Forms" : "Recent submissions"}</CardTitle>
-        <CardDescription>
-          {grouped ? "Breakdown of form submissions in the selected period." : "Submissions matching the selected series."}
-        </CardDescription>
+        <CardDescription>{grouped ? "Breakdown of form submissions in the selected period." : "Submissions matching the selected series."}</CardDescription>
         <CardAction>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="subtle" className="h-9 min-w-36 justify-between rounded-lg px-2.5 text-sm font-normal" />}>
@@ -289,27 +254,21 @@ export function FormMonitorRecords({
                       <TableCell className="text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <RelativeTime value={record.formReceivedAt} />
-                          {record.deletedAt ? (
-                            <span className="text-destructive opacity-0 group-hover:opacity-100">Deleted</span>
-                          ) : record.formId && record.entryId ? (
-                            <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" />
-                          ) : null}
+                          {record.deletedAt ? <span className="text-destructive opacity-0 group-hover:opacity-100">Deleted</span> : record.formId && record.entryId ? <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" /> : null}
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <RelativeTime value={record.trackingReceivedAt} />
-                          {record.trackingId ? <CopyTrackingId trackingId={record.trackingId} /> : null}
+                          {record.trackingUrl ? <ViewLink href={record.trackingUrl} label="View" /> : null}
                         </span>
                       </TableCell>
                       <TableCell className="w-px">
-                        <div className="flex w-full items-center gap-1">
+                        <div className="flex w-full items-center gap-2">
                           <Badge variant={status.variant} className="w-auto min-w-0 flex-1">
                             {status.label}
                           </Badge>
-                          <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
-                            {isPotentialSpam(record) ? <PotentialSpamFlag /> : null}
-                          </span>
+                          <span className="inline-flex size-3.5 shrink-0 items-center justify-center">{isPotentialSpam(record) ? <PotentialSpamFlag record={record} /> : null}</span>
                         </div>
                       </TableCell>
                     </TableRow>

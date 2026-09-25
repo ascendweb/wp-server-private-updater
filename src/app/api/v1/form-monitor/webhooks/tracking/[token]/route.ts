@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { recordTrackingEvent } from "@/Feature/FormMonitor/matching";
 import {
+  TRACKING_PLATFORM_WHATCONVERTS,
   extractReferenceId,
   extractTrackingId,
-  isTrackingUpdate,
+  extractTrackingMeta,
+  extractTrackingSpam,
 } from "@/Feature/FormMonitor/protocol";
 import { getFormMonitorSettings, tokensMatch } from "@/Feature/FormMonitor/webhook-token";
 
@@ -24,19 +25,12 @@ export async function POST(
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  if (isTrackingUpdate(payload)) {
-    const existing = await prisma.formMonitorLead.findUnique({
-      where: { referenceId },
-      select: { trackingReceivedAt: true },
-    });
-    if (existing?.trackingReceivedAt) {
-      return NextResponse.json({ ok: true, duplicate: true });
-    }
-  }
-
   await recordTrackingEvent({
     referenceId,
     trackingId: extractTrackingId(payload),
+    trackingPlatform: TRACKING_PLATFORM_WHATCONVERTS,
+    trackingMeta: extractTrackingMeta(payload),
+    isTrackingSpam: extractTrackingSpam(payload),
     receivedAt: new Date(),
   });
 

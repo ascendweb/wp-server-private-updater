@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { enqueueCheckTracking } from "./jobs";
 import { getFormMonitorSettings } from "./webhook-token";
-import type { FormMonitorFieldValue } from "./protocol";
+import { mergeTrackingMeta, type FormMonitorFieldValue, type TrackingMeta } from "./protocol";
 
 function sourceUrlHasTestParam(sourceUrl: string | null, params: string[]): boolean {
   if (!sourceUrl || params.length === 0) return false;
@@ -70,18 +70,34 @@ export async function recordFormEvent(input: {
 export async function recordTrackingEvent(input: {
   referenceId: string;
   trackingId: string | null;
+  trackingPlatform: string;
+  trackingMeta: TrackingMeta;
+  isTrackingSpam: boolean | null;
   receivedAt: Date;
 }) {
+  const existing = await prisma.formMonitorLead.findUnique({
+    where: { referenceId: input.referenceId },
+    select: { trackingReceivedAt: true, trackingMeta: true, isTrackingSpam: true },
+  });
+  const trackingMeta = mergeTrackingMeta(existing?.trackingMeta, input.trackingMeta);
+  const isTrackingSpam = input.isTrackingSpam ?? existing?.isTrackingSpam ?? false;
+
   return prisma.formMonitorLead.upsert({
     where: { referenceId: input.referenceId },
     create: {
       referenceId: input.referenceId,
       trackingId: input.trackingId,
+      trackingPlatform: input.trackingPlatform,
+      trackingMeta,
+      isTrackingSpam,
       trackingReceivedAt: input.receivedAt,
     },
     update: {
       trackingId: input.trackingId ?? undefined,
-      trackingReceivedAt: input.receivedAt,
+      trackingPlatform: input.trackingPlatform,
+      trackingMeta,
+      isTrackingSpam,
+      trackingReceivedAt: existing?.trackingReceivedAt ?? input.receivedAt,
     },
   });
 }

@@ -20,7 +20,7 @@ import { formMonitorRangeQuery, resolveFormMonitorRange, resolveFormMonitorSerie
 import type { FormMonitorDayBucket, FormMonitorSiteSummary, FormMonitorTotals, FormMonitorTrend } from "@/Feature/FormMonitor/types";
 import { FormMonitorSiteChartCard } from "./form-monitor-chart";
 
-const emptyTotals: FormMonitorTotals = { submitted: 0, missing: 0, spam: 0, deleted: 0, test: 0, trackedRate: null };
+const emptyTotals: FormMonitorTotals = { submitted: 0, missing: 0, spam: 0, potentialSpam: 0, deleted: 0, test: 0, trackedRate: null };
 
 function overviewQuery(rangeId: string, sinceKey: string, untilKey: string) {
   const params = new URLSearchParams();

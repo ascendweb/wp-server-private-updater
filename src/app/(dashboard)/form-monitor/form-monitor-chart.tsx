@@ -16,14 +16,16 @@ function seriesOrder(dataKey: unknown) {
   if (dataKey === "submissions") return 0;
   if (dataKey === "missing") return 1;
   if (dataKey === "spam") return 2;
-  if (dataKey === "deleted") return 3;
-  return 4;
+  if (dataKey === "potentialSpam") return 3;
+  if (dataKey === "deleted") return 4;
+  return 5;
 }
 
 const SERIES_STROKE: Record<FormMonitorSeriesId, { dataKey: keyof FormMonitorDayBucket; stroke: string; dashed?: boolean }> = {
   submissions: { dataKey: "submissions", stroke: "var(--chart-1)" },
   missing: { dataKey: "missing", stroke: "var(--chart-4)" },
   spam: { dataKey: "spam", stroke: "var(--chart-2)", dashed: true },
+  potentialSpam: { dataKey: "potentialSpam", stroke: "oklch(0.7 0.18 55)", dashed: true },
   deleted: { dataKey: "deleted", stroke: "var(--chart-3)", dashed: true },
   test: { dataKey: "test", stroke: "oklch(0.55 0.2 300)", dashed: true },
 };
@@ -43,6 +45,7 @@ export function FormMonitorPeriodStats({
     { label: "Submitted", value: String(totals.submitted), className: "text-foreground", show: enabled.has("submissions") },
     { label: "Missing", value: String(totals.missing), className: "text-foreground", show: enabled.has("missing") },
     { label: "Spam", value: String(totals.spam), className: "text-foreground", show: enabled.has("spam") },
+    { label: "Potential Spam", value: String(totals.potentialSpam), className: "text-foreground", show: enabled.has("potentialSpam") },
     { label: "Deleted", value: String(totals.deleted), className: "text-foreground", show: enabled.has("deleted") },
     { label: "Test", value: String(totals.test), className: "text-foreground", show: enabled.has("test") },
   ].filter((item) => item.show);

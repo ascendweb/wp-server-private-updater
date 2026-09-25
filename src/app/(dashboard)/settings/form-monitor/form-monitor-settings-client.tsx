@@ -15,6 +15,9 @@ type SettingsPayload = {
   missingWebhookUrl: string | null;
   checkDelayMinutes: number;
   testQueryParams: string;
+  trendBandPercent: number;
+  trendAbsDelta: number;
+  whatConvertsUrl: string | null;
 };
 
 export function FormMonitorSettingsClient() {
@@ -22,9 +25,14 @@ export function FormMonitorSettingsClient() {
   const [missingUrl, setMissingUrl] = useState("");
   const [delayMinutes, setDelayMinutes] = useState("60");
   const [testParams, setTestParams] = useState("checkview_test_id");
+  const [trendBand, setTrendBand] = useState("15");
+  const [trendAbs, setTrendAbs] = useState("2");
+  const [whatConvertsUrl, setWhatConvertsUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingTests, setSavingTests] = useState(false);
+  const [savingTrend, setSavingTrend] = useState(false);
+  const [savingWhatConverts, setSavingWhatConverts] = useState(false);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [rotating, setRotating] = useState(false);
 
@@ -43,6 +51,9 @@ export function FormMonitorSettingsClient() {
       setMissingUrl(data.missingWebhookUrl ?? "");
       setDelayMinutes(String(data.checkDelayMinutes ?? 60));
       setTestParams(data.testQueryParams ?? "checkview_test_id");
+      setTrendBand(String(data.trendBandPercent ?? 15));
+      setTrendAbs(String(data.trendAbsDelta ?? 2));
+      setWhatConvertsUrl(data.whatConvertsUrl ?? "");
     }
     setLoading(false);
   }
@@ -124,6 +135,54 @@ export function FormMonitorSettingsClient() {
     setSavingTests(false);
   }
 
+  async function saveTrend(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingTrend(true);
+    const res = await fetch("/api/v1/form-monitor/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save-trend",
+        trendBandPercent: Number.parseInt(trendBand, 10),
+        trendAbsDelta: Number.parseInt(trendAbs, 10),
+      }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as SettingsPayload;
+      setSettings(data);
+      setTrendBand(String(data.trendBandPercent ?? 15));
+      setTrendAbs(String(data.trendAbsDelta ?? 2));
+      toast.success("Trend settings saved");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "Failed to save trend settings");
+    }
+    setSavingTrend(false);
+  }
+
+  async function saveWhatConverts(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingWhatConverts(true);
+    const res = await fetch("/api/v1/form-monitor/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save-whatconverts",
+        whatConvertsUrl,
+      }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as SettingsPayload;
+      setSettings(data);
+      setWhatConvertsUrl(data.whatConvertsUrl ?? "");
+      toast.success("WhatConverts URL saved");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "Failed to save WhatConverts URL");
+    }
+    setSavingWhatConverts(false);
+  }
+
   return (
     <div className="space-y-6">
       {loading || !settings ? (
@@ -150,6 +209,32 @@ export function FormMonitorSettingsClient() {
               <Button variant="destructive" onClick={() => setRotateOpen(true)}>
                 Rotate URL
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>WhatConverts</CardTitle>
+              <CardDescription>
+                Custom domain for opening a lead in WhatConverts. Stored as the origin only, for example{" "}
+                <code>https://app.example.com</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={saveWhatConverts} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="whatConvertsUrl">App URL</Label>
+                  <Input
+                    id="whatConvertsUrl"
+                    value={whatConvertsUrl}
+                    onChange={(event) => setWhatConvertsUrl(event.target.value)}
+                    placeholder="https://app.whatconverts.com"
+                  />
+                </div>
+                <Button type="submit" disabled={savingWhatConverts}>
+                  {savingWhatConverts ? "Saving..." : "Save"}
+                </Button>
+              </form>
             </CardContent>
           </Card>
 
@@ -215,6 +300,50 @@ export function FormMonitorSettingsClient() {
                 </div>
                 <Button type="submit" disabled={savingTests}>
                   {savingTests ? "Saving..." : "Save"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Trend</CardTitle>
+              <CardDescription>
+                Usual variation on the Form Monitor list. A site is flat inside the larger of ±N forms or
+                ±N% of its 30-day pace. The arrow shows how far past that range the selected period is.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={saveTrend} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="trendBandPercent">Percent band</Label>
+                  <Input
+                    id="trendBandPercent"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={trendBand}
+                    onChange={(event) => setTrendBand(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Default 15. Treated as normal volume swing.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="trendAbsDelta">Form floor</Label>
+                  <Input
+                    id="trendAbsDelta"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={trendAbs}
+                    onChange={(event) => setTrendAbs(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Default 2. Low-volume sites stay flat unless they move by at least this many forms.
+                  </p>
+                </div>
+                <Button type="submit" disabled={savingTrend}>
+                  {savingTrend ? "Saving..." : "Save"}
                 </Button>
               </form>
             </CardContent>

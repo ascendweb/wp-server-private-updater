@@ -5,24 +5,40 @@ import {
   isAllowedWebhookUrl,
   normalizeCheckDelayMinutes,
   normalizeTestQueryParams,
+  normalizeTrendAbsDelta,
+  normalizeTrendBandPercent,
   rotateTrackingWebhookToken,
   saveMissingSettings,
   saveTestQueryParams,
+  saveTrendSettings,
+  saveWhatConvertsUrl,
   trackingWebhookUrl,
 } from "@/Feature/FormMonitor/webhook-token";
-import { DEFAULT_CHECK_DELAY_MINUTES, DEFAULT_TEST_QUERY_PARAMS } from "@/Feature/FormMonitor/protocol";
+import {
+  DEFAULT_CHECK_DELAY_MINUTES,
+  DEFAULT_TEST_QUERY_PARAMS,
+  DEFAULT_TREND_ABS_DELTA,
+  DEFAULT_TREND_BAND_PERCENT,
+  normalizeTrackingOrigin,
+} from "@/Feature/FormMonitor/protocol";
 
 function serializeSettings(settings: {
   trackingWebhookToken: string;
   missingWebhookUrl: string | null;
   checkDelayMinutes: number;
   testQueryParams: string[];
+  trendBandPercent: number;
+  trendAbsDelta: number;
+  whatConvertsUrl: string | null;
 }) {
   return {
     trackingWebhookUrl: trackingWebhookUrl(settings.trackingWebhookToken),
     missingWebhookUrl: settings.missingWebhookUrl,
     checkDelayMinutes: settings.checkDelayMinutes ?? DEFAULT_CHECK_DELAY_MINUTES,
     testQueryParams: (settings.testQueryParams ?? DEFAULT_TEST_QUERY_PARAMS).join(", "),
+    trendBandPercent: settings.trendBandPercent ?? DEFAULT_TREND_BAND_PERCENT,
+    trendAbsDelta: settings.trendAbsDelta ?? DEFAULT_TREND_ABS_DELTA,
+    whatConvertsUrl: settings.whatConvertsUrl,
   };
 }
 
@@ -68,6 +84,28 @@ export async function POST(req: NextRequest) {
 
   if (action === "save-test-params") {
     const settings = await saveTestQueryParams(normalizeTestQueryParams(body.testQueryParams));
+    return NextResponse.json(serializeSettings(settings));
+  }
+
+  if (action === "save-trend") {
+    const band = normalizeTrendBandPercent(body.trendBandPercent);
+    const absDelta = normalizeTrendAbsDelta(body.trendAbsDelta);
+    if (band === null) {
+      return NextResponse.json({ error: "Percent band must be a whole number from 0 to 100" }, { status: 400 });
+    }
+    if (absDelta === null) {
+      return NextResponse.json({ error: "Form floor must be a whole number of 0 or more" }, { status: 400 });
+    }
+    const settings = await saveTrendSettings({ trendBandPercent: band, trendAbsDelta: absDelta });
+    return NextResponse.json(serializeSettings(settings));
+  }
+
+  if (action === "save-whatconverts") {
+    const raw = typeof body.whatConvertsUrl === "string" ? body.whatConvertsUrl.trim() : "";
+    if (raw && !normalizeTrackingOrigin(raw)) {
+      return NextResponse.json({ error: "WhatConverts URL must be http or https" }, { status: 400 });
+    }
+    const settings = await saveWhatConvertsUrl(raw ? normalizeTrackingOrigin(raw) : null);
     return NextResponse.json(serializeSettings(settings));
   }
 
