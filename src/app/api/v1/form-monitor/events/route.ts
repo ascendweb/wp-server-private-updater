@@ -22,11 +22,8 @@ export async function POST(req: NextRequest) {
     fields?: unknown;
   };
 
-  if (!license_key || !site_url || !reference_id) {
-    return NextResponse.json(
-      { error: "Missing required fields: license_key, site_url, reference_id" },
-      { status: 400 }
-    );
+  if (!license_key || !site_url) {
+    return NextResponse.json({ error: "Missing required fields: license_key, site_url" }, { status: 400 });
   }
 
   const license = await validateLicense(license_key, site_url);
@@ -37,7 +34,7 @@ export async function POST(req: NextRequest) {
   const site = await ensureSite(site_url, license.id);
   await recordFormEvent({
     siteId: site.id,
-    referenceId: String(reference_id).trim(),
+    referenceId: typeof reference_id === "string" && reference_id.trim() ? reference_id.trim() : null,
     formId: parseOptionalInt(form_id),
     entryId: parseOptionalInt(entry_id),
     formTitle: typeof form_title === "string" && form_title.trim() ? form_title.trim() : null,

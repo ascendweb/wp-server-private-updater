@@ -38,7 +38,7 @@ export type FormMonitorDayBucket = {
 
 export type FormMonitorLeadRecord = {
   id: string;
-  referenceId: string;
+  referenceId: string | null;
   formTitle: string | null;
   isSpam: boolean;
   isTrackingSpam: boolean;

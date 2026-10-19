@@ -7,9 +7,21 @@ import type { FormMonitorDayBucket, FormMonitorTotals } from "@/Feature/FormMoni
 import { FORM_MONITOR_SERIES_LABELS, resolveFormMonitorSeries, type FormMonitorSeriesId } from "@/Feature/FormMonitor/range";
 import { FormMonitorRangeControl } from "./form-monitor-range-control";
 
+function parseUtcDay(date: string) {
+  return new Date(`${date}T00:00:00Z`);
+}
+
 function formatDayLabel(date: string) {
-  const parsed = new Date(`${date}T00:00:00Z`);
-  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  return parseUtcDay(date).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function formatHoverDayLabel(date: string) {
+  return parseUtcDay(date).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function seriesOrder(dataKey: unknown) {
@@ -82,7 +94,13 @@ export function FormMonitorChart({ days, series }: { days: FormMonitorDayBucket[
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={36} />
-          <Tooltip itemSorter={(item) => seriesOrder(item.dataKey)} />
+          <Tooltip
+            itemSorter={(item) => seriesOrder(item.dataKey)}
+            labelFormatter={(_, payload) => {
+              const date = payload?.[0]?.payload?.date;
+              return typeof date === "string" ? formatHoverDayLabel(date) : _;
+            }}
+          />
           <Legend itemSorter={(item) => seriesOrder(item.dataKey)} />
           {series.map((id) => {
             const line = SERIES_STROKE[id];

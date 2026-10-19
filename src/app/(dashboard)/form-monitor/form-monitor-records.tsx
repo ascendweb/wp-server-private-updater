@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronDownIcon, Flag } from "lucide-react";
+import { ChevronDownIcon, Flag, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,21 @@ function trackingSpamIcon(platform: string | null): { src: string; alt: string }
     return { src: "/icons/whatconverts.svg", alt: "WhatConverts" };
   }
   return null;
+}
+
+function MissingReferenceIcon() {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button type="button" className="inline-flex size-3.5 shrink-0 items-center justify-center text-orange-500" aria-label="Missing Reference ID">
+            <TriangleAlertIcon className="size-3.5" />
+          </button>
+        }
+      />
+      <TooltipContent>Missing Reference ID</TooltipContent>
+    </Tooltip>
+  );
 }
 
 function PotentialSpamFlag({ record }: { record: FormMonitorLeadRecord }) {
@@ -254,6 +269,7 @@ export function FormMonitorRecords({ siteId, siteUrl, series, range, group, form
                       <TableCell className="text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-2">
                           <RelativeTime value={record.formReceivedAt} />
+                          {record.referenceId ? null : <MissingReferenceIcon />}
                           {record.deletedAt ? <span className="text-destructive opacity-0 group-hover:opacity-100">Deleted</span> : record.formId && record.entryId ? <ViewLink href={gfAdminUrl(siteUrl, record.formId, record.entryId)} label="View" /> : null}
                         </span>
                       </TableCell>

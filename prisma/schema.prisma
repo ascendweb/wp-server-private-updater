@@ -244,7 +244,7 @@ model FormMonitorSetting {
 
 model FormMonitorLead {
   id                 String    @id @default(cuid())
-  referenceId        String    @unique
+  referenceId        String?   @unique
   siteId             String?
   site               Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
   formId             Int?

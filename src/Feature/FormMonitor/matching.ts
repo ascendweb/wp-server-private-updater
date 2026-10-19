@@ -18,63 +18,48 @@ function sourceUrlHasTestParam(sourceUrl: string | null, params: string[]): bool
   return false;
 }
 
-export async function recordFormEvent(input: {
-  siteId: string;
-  referenceId: string;
-  formId: number | null;
-  entryId: number | null;
-  formTitle: string | null;
-  submittedAt: Date;
-  spam: boolean;
-  sourceUrl: string | null;
-  fields: FormMonitorFieldValue[] | null;
-}) {
+export async function recordFormEvent(input: { siteId: string; referenceId: string | null; formId: number | null; entryId: number | null; formTitle: string | null; submittedAt: Date; spam: boolean; sourceUrl: string | null; fields: FormMonitorFieldValue[] | null }) {
   const settings = await getFormMonitorSettings();
   const isTest = sourceUrlHasTestParam(input.sourceUrl, settings.testQueryParams);
   const fields = input.fields === null ? Prisma.JsonNull : input.fields;
+  const data = {
+    siteId: input.siteId,
+    formId: input.formId,
+    entryId: input.entryId,
+    formTitle: input.formTitle,
+    sourceUrl: input.sourceUrl,
+    fields,
+    isSpam: input.spam,
+    isTest,
+    formReceivedAt: input.submittedAt,
+  };
 
-  const lead = await prisma.formMonitorLead.upsert({
-    where: { referenceId: input.referenceId },
-    create: {
-      referenceId: input.referenceId,
-      siteId: input.siteId,
-      formId: input.formId,
-      entryId: input.entryId,
-      formTitle: input.formTitle,
-      sourceUrl: input.sourceUrl,
-      fields,
-      isSpam: input.spam,
-      isTest,
-      formReceivedAt: input.submittedAt,
-    },
-    update: {
-      siteId: input.siteId,
-      formId: input.formId ?? undefined,
-      entryId: input.entryId ?? undefined,
-      formTitle: input.formTitle ?? undefined,
-      sourceUrl: input.sourceUrl ?? undefined,
-      fields: input.fields === null ? undefined : fields,
-      isSpam: input.spam ? true : undefined,
-      isTest: isTest ? true : undefined,
-      formReceivedAt: input.submittedAt,
-    },
-  });
+  const lead = input.referenceId
+    ? await prisma.formMonitorLead.upsert({
+        where: { referenceId: input.referenceId },
+        create: { referenceId: input.referenceId, ...data },
+        update: {
+          siteId: input.siteId,
+          formId: input.formId ?? undefined,
+          entryId: input.entryId ?? undefined,
+          formTitle: input.formTitle ?? undefined,
+          sourceUrl: input.sourceUrl ?? undefined,
+          fields: input.fields === null ? undefined : fields,
+          isSpam: input.spam ? true : undefined,
+          isTest: isTest ? true : undefined,
+          formReceivedAt: input.submittedAt,
+        },
+      })
+    : await prisma.formMonitorLead.create({ data });
 
-  if (!lead.trackingReceivedAt && !lead.isSpam && !lead.isTest) {
-    await enqueueCheckTracking(input.referenceId);
+  if (lead.referenceId && !lead.trackingReceivedAt && !lead.isSpam && !lead.isTest) {
+    await enqueueCheckTracking(lead.referenceId);
   }
 
   return lead;
 }
 
-export async function recordTrackingEvent(input: {
-  referenceId: string;
-  trackingId: string | null;
-  trackingPlatform: string;
-  trackingMeta: TrackingMeta;
-  isTrackingSpam: boolean | null;
-  receivedAt: Date;
-}) {
+export async function recordTrackingEvent(input: { referenceId: string; trackingId: string | null; trackingPlatform: string; trackingMeta: TrackingMeta; isTrackingSpam: boolean | null; receivedAt: Date }) {
   const existing = await prisma.formMonitorLead.findUnique({
     where: { referenceId: input.referenceId },
     select: { trackingReceivedAt: true, trackingMeta: true, isTrackingSpam: true },
