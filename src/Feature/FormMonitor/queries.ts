@@ -592,7 +592,7 @@ export async function getSiteChart(
         formTitle: true,
       },
     }),
-    listSiteRecords({ siteId, series }),
+    listSiteRecords({ siteId, series, since: range.since, until: range.until }),
   ]);
 
   const days = fillDayBuckets(leads, range.since, range.until);
@@ -625,14 +625,14 @@ const leadRecordSelect = {
   deletedAt: true,
 } as const;
 
-export async function listSiteRecords(input: { siteId: string; series: FormMonitorSeriesId[]; cursor?: string | null; take?: number }): Promise<{ records: FormMonitorLeadRecord[]; nextCursor: string | null }> {
+export async function listSiteRecords(input: { siteId: string; series: FormMonitorSeriesId[]; since: Date; until: Date; cursor?: string | null; take?: number }): Promise<{ records: FormMonitorLeadRecord[]; nextCursor: string | null }> {
   const take = input.take ?? FORM_MONITOR_EVENT_LIMIT;
   const cursorFilter = await recordsCursorFilter(input.siteId, input.cursor);
   const [rows, settings] = await Promise.all([
     prisma.formMonitorLead.findMany({
       where: {
         siteId: input.siteId,
-        formReceivedAt: { not: null },
+        formReceivedAt: { not: null, gte: input.since, lte: input.until },
         AND: [recordsWhere(input.series), cursorFilter],
       },
       orderBy: [{ formReceivedAt: "desc" }, { id: "desc" }],

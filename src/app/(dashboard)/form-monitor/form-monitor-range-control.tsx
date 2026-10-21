@@ -8,24 +8,8 @@ import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  FORM_MONITOR_RANGE_IDS,
-  FORM_MONITOR_RANGE_LABELS,
-  FORM_MONITOR_SERIES_IDS,
-  FORM_MONITOR_SERIES_LABELS,
-  formMonitorRangeQuery,
-  resolveFormMonitorRange,
-  resolveFormMonitorSeries,
-  utcDayKey,
-  type FormMonitorRangeId,
-  type FormMonitorSeriesId,
-} from "@/Feature/FormMonitor/range";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { FORM_MONITOR_RANGE_IDS, FORM_MONITOR_RANGE_LABELS, FORM_MONITOR_SERIES_IDS, FORM_MONITOR_SERIES_LABELS, formMonitorRangeQuery, resolveFormMonitorRange, resolveFormMonitorSeries, utcDayKey, type FormMonitorRangeId, type FormMonitorSeriesId } from "@/Feature/FormMonitor/range";
 
 function dayKeyToLocalDate(key: string): Date {
   const [year, month, day] = key.split("-").map((part) => Number.parseInt(part, 10));
@@ -55,17 +39,7 @@ function seriesLabel(series: FormMonitorSeriesId[]) {
 
 const triggerClass = "h-9 rounded-lg px-2.5 text-sm font-normal";
 
-export function FormMonitorRangeControl({
-  range,
-  since,
-  until,
-  series,
-}: {
-  range?: string | null;
-  since?: string | null;
-  until?: string | null;
-  series?: string | null;
-}) {
+export function FormMonitorRangeControl({ range, since, until, series }: { range?: string | null; since?: string | null; until?: string | null; series?: string | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -154,11 +128,21 @@ export function FormMonitorRangeControl({
             </div>
             <Calendar
               mode="range"
+              required
+              resetOnSelect
               selected={draft}
-              defaultMonth={draft?.from}
+              defaultMonth={committed.from}
               numberOfMonths={2}
               onSelect={(next) => {
                 setRangeDraft(next);
+                if (!next?.from || !next.to) return;
+                skipApplyRef.current = true;
+                visit({
+                  id: "custom",
+                  sinceDay: localDateToDayKey(next.from),
+                  untilDay: localDateToDayKey(next.to),
+                });
+                setOpen(false);
               }}
             />
           </div>
@@ -171,12 +155,7 @@ export function FormMonitorRangeControl({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom" className="min-w-48">
           {FORM_MONITOR_SERIES_IDS.map((id) => (
-            <DropdownMenuCheckboxItem
-              key={id}
-              checked={selectedSeries.includes(id)}
-              closeOnClick={false}
-              onCheckedChange={(checked) => toggleSeries(id, checked === true)}
-            >
+            <DropdownMenuCheckboxItem key={id} checked={selectedSeries.includes(id)} closeOnClick={false} onCheckedChange={(checked) => toggleSeries(id, checked === true)}>
               {FORM_MONITOR_SERIES_LABELS[id]}
             </DropdownMenuCheckboxItem>
           ))}

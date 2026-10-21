@@ -14,7 +14,7 @@ import { RelativeTime } from "@/components/relative-time";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { FormMonitorFormSummary, FormMonitorLeadRecord } from "@/Feature/FormMonitor/types";
 import { TRACKING_PLATFORM_WHATCONVERTS } from "@/Feature/FormMonitor/protocol";
-import { FORM_MONITOR_SERIES_DEFAULT, formMonitorRangeQuery, type FormMonitorSeriesId, type ResolvedFormMonitorRange } from "@/Feature/FormMonitor/range";
+import { FORM_MONITOR_SERIES_DEFAULT, formMonitorRangeQuery, utcDayKey, type FormMonitorSeriesId, type ResolvedFormMonitorRange } from "@/Feature/FormMonitor/range";
 
 function formLabel(record: { formTitle: string | null; formId: number | null }) {
   if (record.formTitle) return record.formTitle;
@@ -146,6 +146,11 @@ export function FormMonitorRecords({ siteId, siteUrl, series, range, group, form
       const params = new URLSearchParams();
       const seriesValue = seriesQuery(series);
       if (seriesValue) params.set("series", seriesValue);
+      if (range.id !== "last-7") params.set("range", range.id);
+      if (range.id === "custom") {
+        params.set("since", utcDayKey(range.since));
+        params.set("until", utcDayKey(range.until));
+      }
       params.set("cursor", cursor);
       const res = await fetch(`/api/v1/form-monitor/sites/${siteId}/records?${params}`);
       if (!res.ok) {
@@ -175,7 +180,7 @@ export function FormMonitorRecords({ siteId, siteUrl, series, range, group, form
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [grouped, cursor, siteId, series]);
+  }, [grouped, cursor, siteId, series, range.id, range.since, range.until]);
 
   function setGroup(next: string) {
     router.push(`${pathname}${formMonitorRangeQuery(range, series, next === "form" ? "form" : null)}`);
